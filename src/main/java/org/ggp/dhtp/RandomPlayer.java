@@ -1,5 +1,6 @@
 package org.ggp.dhtp;
 import java.util.List;
+import java.util.Random;
 
 import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
@@ -39,7 +40,8 @@ public class RandomPlayer extends StateMachineGamer {
 		MachineState state = getCurrentState();
 		Role role = getRole();
 		List<Move> moves = machine.getLegalMoves(state,role);
-		return moves.get(0);
+		int randomIndex = new Random().nextInt(moves.size());
+		return moves.get(randomIndex);
 	}
 
 	@Override
@@ -63,7 +65,7 @@ public class RandomPlayer extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "Don't hate the player";
+		return "Don't hate the random player";
 	}
 
 }
