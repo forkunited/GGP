@@ -21,6 +21,7 @@ public class DontHateThePlayer extends StateMachineGamer {
 
 	@Override
 	public StateMachine getInitialStateMachine() {
+		// asdf
 		// TODO Auto-generated method stub
 		return new CachedStateMachine(new ProverStateMachine());
 	}
