@@ -63,7 +63,7 @@ public class AlphaBetaPlayer extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "Don't hate the player";
+		return "Don't hate the alphabeta player";
 	}
 
 }

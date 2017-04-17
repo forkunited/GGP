@@ -99,7 +99,7 @@ public class CompulsiveDeliberationPlayer extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "Don't hate the cd player";
+		return "Don't hate the compulsive deliberation player";
 	}
 
 }
