@@ -20,8 +20,9 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	Player p;
 	int shiftwidth =0;
 	int turn =0;
+	boolean DEBUG = false;
 	private void print_debug(String message) {
-		if (turn < 4){
+		if (!DEBUG || turn < 4){
 			return;
 		}
 		System.out.print(turn);
