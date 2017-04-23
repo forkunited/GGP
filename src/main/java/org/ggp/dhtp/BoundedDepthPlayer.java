@@ -1,5 +1,7 @@
 package org.ggp.dhtp;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
@@ -17,7 +19,8 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 import org.ggp.dhtp.util.Bounder;
 import org.ggp.dhtp.util.FixedBounder;
 import org.ggp.dhtp.util.Heuristic;
-import org.ggp.dhtp.util.ZeroHeuristic;
+import org.ggp.dhtp.util.HeuristicFreedom;
+import org.ggp.dhtp.util.HeuristicOpponentFreedom;
 
 public class BoundedDepthPlayer extends StateMachineGamer {
 
@@ -58,7 +61,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-			this.h = new ZeroHeuristic();
+			this.h = new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS);
 			this.maxLevel = 3;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
 	}
@@ -76,7 +79,6 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 
 	private Move bestMove(Role role, StateMachine machine, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
 		int bestScore = 0;
-		Move bestMove = null;
 		List<Move> moves = machine.getLegalMoves(state, role);
 
 		if(moves.size() == 1){
@@ -86,6 +88,8 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 
 		int alpha = 0;
 		int beta = 100;
+
+		List<Move> possibleMoves = new ArrayList<Move>();
 
 		for(Move move : moves){
 //			List<Move> nextMoves = machine.getLegalJointMoves(state, role, move).get(0);
@@ -97,12 +101,16 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 			print_debug("Min score for " + move.toString() +" is "+ result);
 
 
-			if(result > bestScore || bestMove == null){
-				bestMove = move;
+			if(result > bestScore || possibleMoves.size() == 0){
+				possibleMoves.clear();
+				possibleMoves.add(move);
 				bestScore = result;
 				alpha = bestScore;
+			} else if(result == bestScore){
+				possibleMoves.add(move);
 			}
 		}
+		Move bestMove = possibleMoves.get(new Random().nextInt(possibleMoves.size()));
 		print_debug("Picking " + bestMove.toString());
 		return bestMove;
 	}
