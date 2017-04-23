@@ -14,12 +14,19 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
+import org.ggp.dhtp.util.Bounder;
+import org.ggp.dhtp.util.FixedBounder;
+import org.ggp.dhtp.util.Heuristic;
+import org.ggp.dhtp.util.ZeroHeuristic;
 
 public class BoundedDepthPlayer extends StateMachineGamer {
 
 	Player p;
+	Heuristic h;
+	Bounder b;
 	int shiftwidth =0;
 	int turn =0;
+	int maxLevel;
 	boolean DEBUG = false;
 	private void print_debug(String message) {
 		if (!DEBUG || turn < 4){
@@ -32,6 +39,13 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		System.out.println(message);
 	}
 
+	private int evalFn(Role role, MachineState state){
+		return h.evalState(role, state);
+	}
+
+	private boolean expFn(Role role, MachineState state, int level){
+		return !b.shouldExpand(getRole(), state, level);
+	}
 
 
 	@Override
@@ -40,11 +54,13 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		return new CachedStateMachine(new ProverStateMachine());
 	}
 
+
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		// TODO Auto-generated method stub
-
+			this.h = new ZeroHeuristic();
+			this.maxLevel = 3;  //TODO Smarter here?
+			this.b = new FixedBounder(this.maxLevel);
 	}
 
 	@Override
@@ -117,7 +133,11 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 			int roleIdx = machine.getRoleIndices().get(getRole());
 			print_debug("At terminal state. Score is: " + machine.getGoals(state).get(roleIdx));
 			return machine.getGoals(state).get(roleIdx);
-		} else {
+		}
+		else if(expFn(getRole(), state, shiftwidth)){
+			return h.evalState(getRole(), state);
+		}
+		else {
 			List<Move> moves = machine.getLegalMoves(state, getRole());
 			for (Move move : moves) {
 				print_debug("Max considering " + move.toString());
