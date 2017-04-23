@@ -39,11 +39,11 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		System.out.println(message);
 	}
 
-	private int evalFn(Role role, MachineState state){
+	private int evalFn(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		return h.evalState(role, state);
 	}
 
-	private boolean expFn(Role role, MachineState state, int level){
+	private boolean expFn(Role role, MachineState state, int level) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		return !b.shouldExpand(getRole(), state, level);
 	}
 
