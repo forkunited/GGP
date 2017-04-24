@@ -11,6 +11,6 @@ public class FixedBounder extends Bounder{
 
 	@Override
 	public boolean shouldExpand(Role role, MachineState state, int level) {
-		return level >= this.maxLevel;
+		return level <= this.maxLevel;
 	}
 }

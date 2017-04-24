@@ -12,7 +12,6 @@ public class GoalProximityHeuristic extends Heuristic{
 	@Override
 	public int evalState(Role role, MachineState state) {
 		try {
-			machine.getGoal(state, role);
 			return machine.getGoal(state, role);
 		}
 		catch (Exception e){

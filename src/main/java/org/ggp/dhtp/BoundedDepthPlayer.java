@@ -64,6 +64,19 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 			this.h = new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS);
 			this.maxLevel = 3;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
+			// Determine depth based on branching factor and constant node search estimate
+			//
+			// Say we can only have 1000 nodes
+			// Take depth to log_b (1000)
+			// From math: Sum from n=0 to n=d (b^n) = ( b^(n+1) -1) / (b-1) = S
+			// This is the max amount of nodes that can be in a tree of
+			// depth d with a branching factor at most b.
+			// To find approx depth for S such nodes S ~ (b^(n+1) / b) = b^n
+			// log_b(S) ~ d
+			int fixedNodeNum = 1000;
+			int maxBranchEstimate = getStateMachine().findActions(getRole()).size();
+			int fixedNodeDepth = (int) (Math.log(fixedNodeNum) / Math.log(maxBranchEstimate));
+
 	}
 
 	@Override
