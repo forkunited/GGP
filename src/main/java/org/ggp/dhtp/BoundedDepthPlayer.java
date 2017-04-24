@@ -31,7 +31,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	int shiftwidth =0;
 	int turn =0;
 	int maxLevel;
-	boolean DEBUG = true;
+	boolean DEBUG = false;
 	long turnTimeout = 0;
 	double timeoutSafetyMargin = 0.75;
 
