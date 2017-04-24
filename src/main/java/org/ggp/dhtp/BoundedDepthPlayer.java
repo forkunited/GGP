@@ -31,6 +31,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	int shiftwidth =0;
 	int turn =0;
 	int maxLevel;
+	boolean reachedAllTerminal = false;
 	boolean DEBUG = false;
 	long turnTimeout = 0;
 	double timeoutSafetyMargin = 0.75;
@@ -47,6 +48,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	}
 
 	private int evalFn(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		this.reachedAllTerminal= false;
 		return (int)(h.evalState(role, state) * 100);
 	}
 
@@ -91,7 +93,12 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		Move randomMove = machine.getRandomMove(state, role);
 		try {
 			turnTimeout = System.currentTimeMillis() + (long) (timeoutSafetyMargin * timeout);
-			bestMove = bestMove(role, machine, state);
+
+			for(int iteration = 0; iteration < maxLevel && !reachedAllTerminal ; iteration++){
+				this.b = new FixedBounder(iteration);
+				this.reachedAllTerminal = true;
+				bestMove = bestMove(role, machine, state);
+			}
 		} catch (Exception e){
 			if(bestMove == null){
 				bestMove = randomMove;
