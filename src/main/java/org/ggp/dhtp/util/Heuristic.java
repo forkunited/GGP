@@ -6,7 +6,7 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public abstract class Heuristic {
-	public abstract int evalState(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException;
+	public abstract double evalState(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException;
 }
 
 
