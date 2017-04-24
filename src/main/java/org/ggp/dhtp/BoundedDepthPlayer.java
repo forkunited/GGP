@@ -72,6 +72,8 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+			this.turn = 0;
+			this.shiftwidth = 0;
 			this.h = new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS);
 			this.maxLevel = 3;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
