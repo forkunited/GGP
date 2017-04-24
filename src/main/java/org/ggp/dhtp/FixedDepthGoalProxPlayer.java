@@ -16,10 +16,10 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 import org.ggp.dhtp.util.Bounder;
 import org.ggp.dhtp.util.FixedBounder;
+import org.ggp.dhtp.util.GoalProximityHeuristic;
 import org.ggp.dhtp.util.Heuristic;
-import org.ggp.dhtp.util.ZeroHeuristic;
 
-public class BoundedDepthPlayer extends StateMachineGamer {
+public class FixedDepthGoalProxPlayer extends StateMachineGamer {
 
 	Player p;
 	Heuristic h;
@@ -58,8 +58,8 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-			this.h = new ZeroHeuristic();
-			this.maxLevel = 9;  //TODO Smarter here?
+			this.h = new GoalProximityHeuristic(getStateMachine());
+			this.maxLevel = 3;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
 	}
 
@@ -176,7 +176,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "Don't hate the bounded depth player";
+		return "Don't hate the fixed depth player with a goal proximity heuristic";
 	}
 
 }
