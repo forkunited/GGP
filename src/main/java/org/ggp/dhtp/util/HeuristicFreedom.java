@@ -19,15 +19,15 @@ public class HeuristicFreedom extends Heuristic {
 	}
 
 	@Override
-	public int evalState(Role role, MachineState state) throws MoveDefinitionException {
+	public double evalState(Role role, MachineState state) throws MoveDefinitionException {
 		int stateMoves = this.machine.getLegalMoves(state, role).size();
 		int roleMoves = this.machine.findActions(role).size();
-		int mobility = (int)(100 * stateMoves/(double)roleMoves);
+		double mobility = stateMoves/roleMoves;
 
 		if (this.type == Type.MOBILITY) {
 			return mobility;
 		} else {
-			return 100 - mobility;
+			return 1.0 - mobility;
 		}
 	}
 }
