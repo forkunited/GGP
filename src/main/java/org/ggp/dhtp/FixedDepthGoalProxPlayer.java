@@ -39,7 +39,7 @@ public class FixedDepthGoalProxPlayer extends StateMachineGamer {
 		System.out.println(message);
 	}
 
-	private int evalFn(Role role, MachineState state){
+	private int evalFn(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
 		return h.evalState(role, state);
 	}
 
