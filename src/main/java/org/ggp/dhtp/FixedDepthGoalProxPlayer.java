@@ -40,7 +40,7 @@ public class FixedDepthGoalProxPlayer extends StateMachineGamer {
 	}
 
 	private int evalFn(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
-		return h.evalState(role, state);
+		return (int)(h.evalState(role, state)*100);
 	}
 
 	private boolean expFn(Role role, MachineState state, int level){
@@ -135,7 +135,7 @@ public class FixedDepthGoalProxPlayer extends StateMachineGamer {
 			return machine.getGoals(state).get(roleIdx);
 		}
 		else if(expFn(getRole(), state, shiftwidth)){
-			return h.evalState(getRole(), state);
+			return evalFn(getRole(), state);
 		}
 		else {
 			List<Move> moves = machine.getLegalMoves(state, getRole());

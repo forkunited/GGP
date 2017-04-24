@@ -21,6 +21,7 @@ import org.ggp.dhtp.util.FixedBounder;
 import org.ggp.dhtp.util.Heuristic;
 import org.ggp.dhtp.util.HeuristicFreedom;
 import org.ggp.dhtp.util.HeuristicOpponentFreedom;
+import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class BoundedDepthPlayer extends StateMachineGamer {
 
@@ -31,8 +32,11 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	int turn =0;
 	int maxLevel;
 	boolean DEBUG = false;
+	long turnTimeout = 0;
+	double timeoutSafetyMargin = 0.75;
+
 	private void print_debug(String message) {
-		if (!DEBUG || turn < 4){
+		if (!DEBUG || turn < -1){
 			return;
 		}
 		System.out.print(turn);
@@ -43,11 +47,18 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	}
 
 	private int evalFn(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		return h.evalState(role, state);
+		return (int)(h.evalState(role, state) * 100);
 	}
 
 	private boolean expFn(Role role, MachineState state, int level) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		return !b.shouldExpand(getRole(), state, level);
+	}
+
+	private void checkTimeout() throws PhaseTimeoutException{
+		if(System.currentTimeMillis() > turnTimeout){
+			print_debug("Timed out!");
+			throw new PhaseTimeoutException();
+		}
 	}
 
 
@@ -61,6 +72,8 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+			this.turn = 0;
+			this.shiftwidth = 0;
 			this.h = new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS);
 			this.maxLevel = 3;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
@@ -83,10 +96,21 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		turn++;
+
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
 		Role role = getRole();
-		return bestMove(role, machine, state);
+		Move bestMove = null;
+		Move randomMove = machine.getRandomMove(state, role);
+		try {
+			turnTimeout = System.currentTimeMillis() + (long) (timeoutSafetyMargin * timeout);
+			bestMove = bestMove(role, machine, state);
+		} catch (Exception e){
+			if(bestMove == null){
+				bestMove = randomMove;
+			}
+		}
+		return bestMove;
 	}
 
 
@@ -101,38 +125,49 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 
 		int alpha = 0;
 		int beta = 100;
+		Move bestMove = null;
 
 		List<Move> possibleMoves = new ArrayList<Move>();
+		try {
+			for (Move move : moves) {
+				checkTimeout();
+				// List<Move> nextMoves = machine.getLegalJointMoves(state,
+				// role, move).get(0);
 
-		for(Move move : moves){
-//			List<Move> nextMoves = machine.getLegalJointMoves(state, role, move).get(0);
+				print_debug("Considering " + move.toString());
+				shiftwidth++;
+				int result = minScore(machine, move, state, alpha, beta);
+				shiftwidth--;
+				print_debug("Min score for " + move.toString() + " is " + result);
 
-			print_debug("Considering " + move.toString());
-			shiftwidth++;
-			int result = minScore(machine, move, state, alpha, beta);
-			shiftwidth--;
-			print_debug("Min score for " + move.toString() +" is "+ result);
-
-
-			if(result > bestScore || possibleMoves.size() == 0){
-				possibleMoves.clear();
-				possibleMoves.add(move);
-				bestScore = result;
-				alpha = bestScore;
-			} else if(result == bestScore){
-				possibleMoves.add(move);
+				if (result > bestScore || possibleMoves.size() == 0) {
+					possibleMoves.clear();
+					possibleMoves.add(move);
+					bestScore = result;
+					alpha = bestScore;
+				} else if (result == bestScore) {
+					possibleMoves.add(move);
+				}
 			}
+		} catch (PhaseTimeoutException pt) {
+			print_debug("Timed out");
+			shiftwidth = 0;
+		} finally {
+			if(possibleMoves.size() == 0){
+				bestMove = machine.getRandomMove(state, role);
+			}else {
+				bestMove = possibleMoves.get(new Random().nextInt(possibleMoves.size()));
+			}
+			print_debug("Picking " + bestMove.toString());
 		}
-		Move bestMove = possibleMoves.get(new Random().nextInt(possibleMoves.size()));
-		print_debug("Picking " + bestMove.toString());
 		return bestMove;
 	}
 
 
-	private int minScore(StateMachine machine, Move playerMove, MachineState state, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
+	private int minScore(StateMachine machine, Move playerMove, MachineState state, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException{
 
 		// System.out.println("Mover is "+mover.toString());
-
+		checkTimeout();
 		List<List<Move>> moves = machine.getLegalJointMoves(state, getRole(), playerMove);
 		for (List<Move> move : moves) {
 			print_debug("Min considering " + move.toString());
@@ -149,14 +184,16 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 
 	}
 
-	private int maxScore(StateMachine machine, MachineState state, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
+	private int maxScore(StateMachine machine, MachineState state, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException{
+		checkTimeout();
 		if(machine.isTerminal(state)){
 			int roleIdx = machine.getRoleIndices().get(getRole());
 			print_debug("At terminal state. Score is: " + machine.getGoals(state).get(roleIdx));
 			return machine.getGoals(state).get(roleIdx);
 		}
 		else if(expFn(getRole(), state, shiftwidth)){
-			return h.evalState(getRole(), state);
+			print_debug("Should not expand state -- defaulting to heuristic");
+			return evalFn(getRole(), state);
 		}
 		else {
 			List<Move> moves = machine.getLegalMoves(state, getRole());
