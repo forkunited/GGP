@@ -22,7 +22,7 @@ public class HeuristicFreedom extends Heuristic {
 	public double evalState(Role role, MachineState state) throws MoveDefinitionException {
 		int stateMoves = this.machine.getLegalMoves(state, role).size();
 		int roleMoves = this.machine.findActions(role).size();
-		double mobility = stateMoves/roleMoves;
+		double mobility = (double)stateMoves/(double)roleMoves;
 
 		if (this.type == Type.MOBILITY) {
 			return mobility;
