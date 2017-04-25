@@ -29,7 +29,7 @@ public class HeuristicOpponentFreedom extends HeuristicFreedom {
 			}
 		}
 
-		return (count == 0) ? 1.0 : 1.0 - sum/count; //take 1.0 - since we want to minimize
+		return (count == 0) ? 0.0 : 1.0 - sum/count; //take 1.0 - since we want to minimize
 	}
 
 }

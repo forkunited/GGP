@@ -27,6 +27,25 @@ import org.ggp.dhtp.util.HeuristicWeighted;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class BoundedDepthPlayer extends StateMachineGamer {
+	class MoveContainer{
+		private Move move;
+		private int score;
+		boolean timedOut;
+		public MoveContainer(Move move, int score, boolean timedOut){
+			this.move = move;
+			this.score = score;
+			this.timedOut = timedOut;
+		}
+		public boolean getTimedOut(){
+			return timedOut;
+		}
+		public Move getMove() {
+			return move;
+		}
+		public int getScore() {
+			return score;
+		}
+	}
 
 	Player p;
 	Heuristic h;
@@ -35,7 +54,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	int turn =0;
 	int maxLevel;
 	boolean reachedAllTerminal;
-	boolean DEBUG = true;
+	boolean DEBUG = false;
 	long turnTimeout = 0;
 	double timeoutSafetyMargin = 0.75;
 
@@ -105,6 +124,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		MachineState state = getCurrentState();
 		Role role = getRole();
 		Move bestMove = null;
+		MoveContainer bestMoveResult = null;
 		Move randomMove = machine.getRandomMove(state, role);
 		this.reachedAllTerminal = false;
 		try {
@@ -113,7 +133,19 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 			for(int iteration = 0; iteration < maxLevel && !reachedAllTerminal ; iteration++){
 				this.b = new FixedBounder(iteration);
 				this.reachedAllTerminal = true;
-				bestMove = bestMove(role, machine, state);
+				MoveContainer candidateResult =  bestMove(role, machine, state);
+				if(bestMoveResult == null){
+					bestMove = candidateResult.getMove();
+					bestMoveResult = candidateResult;
+				} else if(!candidateResult.timedOut){
+					//iteration completed -- these estimates should be better than previous
+					bestMove = candidateResult.getMove();
+					bestMoveResult = candidateResult;
+				} else if (candidateResult.getScore() > bestMoveResult.getScore()){
+					//iteration timed out, pick based on score
+					bestMove = candidateResult.getMove();
+					bestMoveResult = candidateResult;
+				}
 
 			}
 		} catch (Exception e){
@@ -128,19 +160,19 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	}
 
 
-	private Move bestMove(Role role, StateMachine machine, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
+	private MoveContainer bestMove(Role role, StateMachine machine, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
 		int bestScore = 0;
 		List<Move> rawMoves = machine.getLegalMoves(state, role);
-
+		boolean timedOut = false;
 
 		if(rawMoves.size() == 1){
 			print_debug("Only one choice: picking " + rawMoves.get(0).toString());
-			return rawMoves.get(0);
+			return new MoveContainer(rawMoves.get(0), 0, timedOut);
 		}
 
 		int alpha = 0;
 		int beta = 100;
-		Move bestMove = null;
+		MoveContainer bestMove = null;
 		List<Move> moves = new ArrayList<Move>(rawMoves);
 
 		Collections.shuffle(moves, new Random());
@@ -168,14 +200,15 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		} catch (PhaseTimeoutException pt) {
 			print_debug("Timed out");
 			shiftwidth = 0;
+			timedOut = true;
 		} finally {
 			if(possibleMoves.size() == 0){
-				bestMove = machine.getRandomMove(state, role);
+				bestMove = new MoveContainer(machine.getRandomMove(state, role), 0, timedOut);
 			}else {
-				bestMove = possibleMoves.get(new Random().nextInt(possibleMoves.size()));
-				print_debug("Best Move " + bestMove);
+				bestMove = new MoveContainer(possibleMoves.get(new Random().nextInt(possibleMoves.size())),bestScore, timedOut);
+				print_debug("Best Move " + bestMove.getMove());
 			}
-			print_debug("Picking " + bestMove.toString());
+			print_debug("Picking " + bestMove.getMove().toString());
 		}
 		return bestMove;
 	}
