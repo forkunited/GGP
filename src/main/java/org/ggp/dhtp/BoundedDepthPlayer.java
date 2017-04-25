@@ -21,6 +21,9 @@ import org.ggp.dhtp.util.Bounder;
 import org.ggp.dhtp.util.FixedBounder;
 import org.ggp.dhtp.util.GoalProximityHeuristic;
 import org.ggp.dhtp.util.Heuristic;
+import org.ggp.dhtp.util.HeuristicFreedom;
+import org.ggp.dhtp.util.HeuristicOpponentFreedom;
+import org.ggp.dhtp.util.HeuristicWeighted;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class BoundedDepthPlayer extends StateMachineGamer {
@@ -76,10 +79,21 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 			this.turn = 0;
 			this.shiftwidth = 0;
-			this.h = new GoalProximityHeuristic(getStateMachine());
+			List<Heuristic> hl = new ArrayList<Heuristic>();
+			List<Double> weights = new ArrayList<Double>();
+			hl.add(new GoalProximityHeuristic(getStateMachine()));
+			weights.add(0.49);
+			hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
+			weights.add(0.24);
+			hl.add(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
+			weights.add(0.24);
+
+
+			this.h = new HeuristicWeighted(hl, weights);
 			this.maxLevel = 50;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
 			this.reachedAllTerminal = false;
+
 	}
 
 	@Override
