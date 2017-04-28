@@ -21,6 +21,7 @@ import org.ggp.dhtp.util.Bounder;
 import org.ggp.dhtp.util.FixedBounder;
 import org.ggp.dhtp.util.GoalProximityHeuristic;
 import org.ggp.dhtp.util.Heuristic;
+import org.ggp.dhtp.util.HeuristicEvaluator;
 import org.ggp.dhtp.util.HeuristicFreedom;
 import org.ggp.dhtp.util.HeuristicOpponentFreedom;
 import org.ggp.dhtp.util.HeuristicWeighted;
@@ -98,15 +99,37 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 			this.turn = 0;
 			this.shiftwidth = 0;
+			long metagameTimeout = (long)(timeoutSafetyMargin * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 			List<Heuristic> hl = new ArrayList<Heuristic>();
 			List<Double> weights = new ArrayList<Double>();
-			hl.add(new GoalProximityHeuristic(getStateMachine()));
-			weights.add(0.49);
-			hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
-			weights.add(0.24);
-			hl.add(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
-			weights.add(0.24);
 
+			hl.add(new GoalProximityHeuristic(getStateMachine()));
+			hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
+			hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS));
+			hl.add(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
+			hl.add(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS));
+
+
+			try{
+				HeuristicEvaluator he = new HeuristicEvaluator(metagameTimeout, getRole(), getStateMachine().getInitialState(), getStateMachine());
+				for(Heuristic h : hl){
+					he.addHeuristic(h);
+				}
+				weights = he.generateSimulatedWeights();
+
+			} catch (Exception e){
+				System.err.println(e);
+				weights.add(0.20);
+				weights.add(0.20);
+				weights.add(0.20);
+				weights.add(0.20);
+				weights.add(0.20);
+			}
+			DEBUG = true;
+			for(int i = 0; i < weights.size(); i++){
+				print_debug("Weight " + i+" is:"+weights.get(i));
+			}
+			DEBUG = false;
 
 			this.h = new HeuristicWeighted(hl, weights);
 			this.maxLevel = 50;  //TODO Smarter here?
