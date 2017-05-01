@@ -1,5 +1,6 @@
 package org.ggp.dhtp;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -18,12 +19,34 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 import org.ggp.dhtp.util.Bounder;
 import org.ggp.dhtp.util.FixedBounder;
+import org.ggp.dhtp.util.GoalProximityHeuristic;
 import org.ggp.dhtp.util.Heuristic;
+import org.ggp.dhtp.util.HeuristicEvaluator;
 import org.ggp.dhtp.util.HeuristicFreedom;
 import org.ggp.dhtp.util.HeuristicOpponentFreedom;
+import org.ggp.dhtp.util.HeuristicWeighted;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class BoundedDepthPlayer extends StateMachineGamer {
+	class MoveContainer{
+		private Move move;
+		private int score;
+		boolean timedOut;
+		public MoveContainer(Move move, int score, boolean timedOut){
+			this.move = move;
+			this.score = score;
+			this.timedOut = timedOut;
+		}
+		public boolean getTimedOut(){
+			return timedOut;
+		}
+		public Move getMove() {
+			return move;
+		}
+		public int getScore() {
+			return score;
+		}
+	}
 
 	Player p;
 	Heuristic h;
@@ -31,6 +54,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	int shiftwidth =0;
 	int turn =0;
 	int maxLevel;
+	boolean reachedAllTerminal;
 	boolean DEBUG = false;
 	long turnTimeout = 0;
 	double timeoutSafetyMargin = 0.75;
@@ -39,14 +63,15 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		if (!DEBUG || turn < -1){
 			return;
 		}
-		System.out.print(turn);
+		System.err.print(turn);
 		for (int i=0; i<= shiftwidth; i++) {
-			System.out.print("  ");
+			System.err.print("  ");
 		}
-		System.out.println(message);
+		System.err.println(message);
 	}
 
 	private int evalFn(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		this.reachedAllTerminal= false;
 		return (int)(h.evalState(role, state) * 100);
 	}
 
@@ -74,21 +99,42 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 			this.turn = 0;
 			this.shiftwidth = 0;
-			this.h = new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS);
-			this.maxLevel = 3;  //TODO Smarter here?
+			long metagameTimeout = (long)(timeoutSafetyMargin * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
+			List<Heuristic> hl = new ArrayList<Heuristic>();
+			List<Double> weights = new ArrayList<Double>();
+
+			hl.add(new GoalProximityHeuristic(getStateMachine()));
+			hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
+			hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS));
+			hl.add(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
+			hl.add(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS));
+
+
+			try{
+				HeuristicEvaluator he = new HeuristicEvaluator(metagameTimeout, getRole(), getStateMachine().getInitialState(), getStateMachine());
+				for(Heuristic h : hl){
+					he.addHeuristic(h);
+				}
+				weights = he.generateSimulatedWeights();
+
+			} catch (Exception e){
+				System.err.println(e);
+				weights.add(0.20);
+				weights.add(0.20);
+				weights.add(0.20);
+				weights.add(0.20);
+				weights.add(0.20);
+			}
+			DEBUG = true;
+			for(int i = 0; i < weights.size(); i++){
+				print_debug("Weight " + i+" is:"+weights.get(i));
+			}
+			DEBUG = false;
+
+			this.h = new HeuristicWeighted(hl, weights);
+			this.maxLevel = 50;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
-			// Determine depth based on branching factor and constant node search estimate
-			//
-			// Say we can only have 1000 nodes
-			// Take depth to log_b (1000)
-			// From math: Sum from n=0 to n=d (b^n) = ( b^(n+1) -1) / (b-1) = S
-			// This is the max amount of nodes that can be in a tree of
-			// depth d with a branching factor at most b.
-			// To find approx depth for S such nodes S ~ (b^(n+1) / b) = b^n
-			// log_b(S) ~ d
-			int fixedNodeNum = 1000;
-			int maxBranchEstimate = getStateMachine().findActions(getRole()).size();
-			int fixedNodeDepth = (int) (Math.log(fixedNodeNum) / Math.log(maxBranchEstimate));
+			this.reachedAllTerminal = false;
 
 	}
 
@@ -101,12 +147,35 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		MachineState state = getCurrentState();
 		Role role = getRole();
 		Move bestMove = null;
+		MoveContainer bestMoveResult = null;
 		Move randomMove = machine.getRandomMove(state, role);
+		this.reachedAllTerminal = false;
 		try {
-			turnTimeout = System.currentTimeMillis() + (long) (timeoutSafetyMargin * timeout);
-			bestMove = bestMove(role, machine, state);
+			turnTimeout = (long)(timeoutSafetyMargin * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
+
+			for(int iteration = 0; iteration < maxLevel && !reachedAllTerminal ; iteration++){
+				this.b = new FixedBounder(iteration);
+				this.reachedAllTerminal = true;
+				MoveContainer candidateResult =  bestMove(role, machine, state);
+				if(bestMoveResult == null){
+					bestMove = candidateResult.getMove();
+					bestMoveResult = candidateResult;
+				} else if(!candidateResult.timedOut){
+					//iteration completed -- these estimates should be better than previous
+					bestMove = candidateResult.getMove();
+					bestMoveResult = candidateResult;
+				} else if (candidateResult.getScore() > bestMoveResult.getScore()){
+					//iteration timed out, pick based on score
+					bestMove = candidateResult.getMove();
+					bestMoveResult = candidateResult;
+				}
+
+			}
 		} catch (Exception e){
+
+		} finally {
 			if(bestMove == null){
+				print_debug("Picking Random Move");
 				bestMove = randomMove;
 			}
 		}
@@ -114,18 +183,22 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 	}
 
 
-	private Move bestMove(Role role, StateMachine machine, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
+	private MoveContainer bestMove(Role role, StateMachine machine, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
 		int bestScore = 0;
-		List<Move> moves = machine.getLegalMoves(state, role);
+		List<Move> rawMoves = machine.getLegalMoves(state, role);
+		boolean timedOut = false;
 
-		if(moves.size() == 1){
-			print_debug("Only one choice: picking " + moves.get(0).toString());
-			return moves.get(0);
+		if(rawMoves.size() == 1){
+			print_debug("Only one choice: picking " + rawMoves.get(0).toString());
+			return new MoveContainer(rawMoves.get(0), 0, timedOut);
 		}
 
 		int alpha = 0;
 		int beta = 100;
-		Move bestMove = null;
+		MoveContainer bestMove = null;
+		List<Move> moves = new ArrayList<Move>(rawMoves);
+
+		Collections.shuffle(moves, new Random());
 
 		List<Move> possibleMoves = new ArrayList<Move>();
 		try {
@@ -145,20 +218,20 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 					possibleMoves.add(move);
 					bestScore = result;
 					alpha = bestScore;
-				} else if (result == bestScore) {
-					possibleMoves.add(move);
 				}
 			}
 		} catch (PhaseTimeoutException pt) {
 			print_debug("Timed out");
 			shiftwidth = 0;
+			timedOut = true;
 		} finally {
 			if(possibleMoves.size() == 0){
-				bestMove = machine.getRandomMove(state, role);
+				bestMove = new MoveContainer(machine.getRandomMove(state, role), 0, timedOut);
 			}else {
-				bestMove = possibleMoves.get(new Random().nextInt(possibleMoves.size()));
+				bestMove = new MoveContainer(possibleMoves.get(new Random().nextInt(possibleMoves.size())),bestScore, timedOut);
+				print_debug("Best Move " + bestMove.getMove());
 			}
-			print_debug("Picking " + bestMove.toString());
+			print_debug("Picking " + bestMove.getMove().toString());
 		}
 		return bestMove;
 	}
