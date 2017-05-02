@@ -25,6 +25,7 @@ import org.ggp.dhtp.util.HeuristicEvaluator;
 import org.ggp.dhtp.util.HeuristicFreedom;
 import org.ggp.dhtp.util.HeuristicOpponentFreedom;
 import org.ggp.dhtp.util.HeuristicWeighted;
+import org.ggp.dhtp.util.MCSHeuristic;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class BoundedDepthPlayer extends StateMachineGamer {
@@ -131,7 +132,8 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 			}
 			DEBUG = false;
 
-			this.h = new HeuristicWeighted(hl, weights);
+			this.h = new HeuristicWeighted(hl, weights); //TODO reinstate the weighted heuristic after testing monte carlo search
+			this.h = new MCSHeuristic(getStateMachine());
 			this.maxLevel = 50;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
 			this.reachedAllTerminal = false;
@@ -266,6 +268,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		}
 		else if(expFn(getRole(), state, shiftwidth)){
 			print_debug("Should not expand state -- defaulting to heuristic");
+			this.h.preEval(System.currentTimeMillis() + 20);
 			return evalFn(getRole(), state);
 		}
 		else {
