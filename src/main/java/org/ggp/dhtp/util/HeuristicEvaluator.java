@@ -87,8 +87,8 @@ public class HeuristicEvaluator {
 				}
 			}
 		} catch (Exception e) {
-			System.err.println(e.toString());
-			e.printStackTrace(System.err);
+			System.out.println(e.toString());
+			e.printStackTrace(System.out);
 		} finally {
 			if(numScores > 1){
 				List<Double> qualities  = new ArrayList<Double>();
@@ -96,8 +96,8 @@ public class HeuristicEvaluator {
 				//get quality metric
 				for(int i = 0; i < heuristics.size(); i++){
 					double variance = v.get(i)/(numScores-1.0);
-					System.err.println("Heuristic "+i+" mean:"+m.get(i));
-					System.err.println("Heuristic "+i+" var:"+variance);
+					System.out.println("Heuristic "+i+" mean:"+m.get(i));
+					System.out.println("Heuristic "+i+" var:"+variance);
 					//get signal to noise ratio by calculating mean/stdev. Also, heuristics should be scaled up by how much they predict score on average
 					// so we have mean * snr as raw quality
 					// we take a square root of raw quality to reduce extreme assignments

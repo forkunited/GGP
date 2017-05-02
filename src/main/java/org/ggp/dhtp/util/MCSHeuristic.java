@@ -20,7 +20,7 @@ public class MCSHeuristic extends Heuristic {
 
 	public MCSHeuristic(StateMachine machine) {
 		this.machine = machine;
-		this.maxDepthCharge = 4;
+		this.maxDepthCharge = 10;
 	}
 
 	@Override
