@@ -6,20 +6,37 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 
 public class GoalProximityHeuristic extends Heuristic {
+	public enum Mode {
+		ONLY_TERMINAL,
+		ONLY_NONTERMINAL,
+		ALL
+	}
+
 	private StateMachine machine;
+	private Mode mode;
 	private double norm;
 
 	public GoalProximityHeuristic(StateMachine machine) {
-		this(machine, 100.0);
+		this(machine, Mode.ALL, 100.0);
 	}
 
-	public GoalProximityHeuristic(StateMachine machine, double norm) {
+	public GoalProximityHeuristic(StateMachine machine, Mode mode) {
+		this(machine, mode, 100.0);
+	}
+
+	public GoalProximityHeuristic(StateMachine machine, Mode mode, double norm) {
 		this.machine = machine;
+		this.mode = mode;
 		this.norm = norm;
 	}
 
 	@Override
 	public double evalState(Role role, MachineState state) throws GoalDefinitionException {
-		return this.machine.getGoal(state, role) / this.norm;
+		if (this.mode == Mode.ONLY_TERMINAL)
+			return !this.machine.isTerminal(state) ? 0.0 : this.machine.getGoal(state, role) / this.norm;
+		else if (this.mode == Mode.ONLY_NONTERMINAL)
+			return this.machine.isTerminal(state) ? 0.0 : this.machine.getGoal(state, role) / this.norm;
+		else
+			return this.machine.getGoal(state, role) / this.norm;
 	}
 }
