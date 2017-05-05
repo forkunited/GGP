@@ -20,6 +20,11 @@ public class SAFeatureHeuristic extends SAFeature {
 	}
 
 	@Override
+	public List<String> toStrings() {
+		return Arrays.asList(this.heuristic.toString());
+	}
+
+	@Override
 	public int size() {
 		return 1;
 	}

@@ -1,6 +1,7 @@
 package org.ggp.dhtp;
 import java.util.Arrays;
 
+import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
@@ -23,9 +24,10 @@ public class QPlayer extends StateMachineGamer {
 	private static final double TIMEOUT_SAFETY_MARGIN = 0.25;
 	private static final double ALPHA = 0.01; // learning rate
 	private static final double EPSILON = 0.1; // For epsilon greedy exploration
-	private static final int LEARNING_ITERATIONS = 100;
+	private static final int LEARNING_ITERATIONS = 1000;
 
 	private LearnerQGlobalLinear agent;
+	Player p;
 
 	private long getTimeoutDuration(long timeout) {
 		return (long)((1.0 - TIMEOUT_SAFETY_MARGIN)*(timeout - System.currentTimeMillis()));
@@ -40,13 +42,28 @@ public class QPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		int maxLevel = 100;
 		SAFeatureSet features = new SAFeatureSet(Arrays.asList(new SAFeature[] {
+			new SAFeatureBoundedDepthHeuristic(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY), 1),
+			new SAFeatureBoundedDepthHeuristic(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS), 1),
+			new SAFeatureBoundedDepthHeuristic(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY), 1),
+			new SAFeatureBoundedDepthHeuristic(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS), 1),
+			new SAFeatureBoundedDepthHeuristic(new GoalProximityHeuristic(getStateMachine(), GoalProximityHeuristic.Mode.ONLY_NONTERMINAL), 1),
+			new SAFeatureBoundedDepthHeuristic(new GoalProximityHeuristic(getStateMachine(), GoalProximityHeuristic.Mode.ONLY_TERMINAL), 1),
+
 			new SAFeatureBoundedDepthHeuristic(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY), 3),
 			new SAFeatureBoundedDepthHeuristic(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS), 3),
 			new SAFeatureBoundedDepthHeuristic(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY), 3),
 			new SAFeatureBoundedDepthHeuristic(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS), 3),
 			new SAFeatureBoundedDepthHeuristic(new GoalProximityHeuristic(getStateMachine(), GoalProximityHeuristic.Mode.ONLY_NONTERMINAL), 3),
-			new SAFeatureBoundedDepthHeuristic(new GoalProximityHeuristic(getStateMachine(), GoalProximityHeuristic.Mode.ONLY_TERMINAL), 3)
+			new SAFeatureBoundedDepthHeuristic(new GoalProximityHeuristic(getStateMachine(), GoalProximityHeuristic.Mode.ONLY_TERMINAL), 3),
+
+			new SAFeatureBoundedDepthHeuristic(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY), maxLevel),
+			new SAFeatureBoundedDepthHeuristic(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS), maxLevel),
+			new SAFeatureBoundedDepthHeuristic(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY), maxLevel),
+			new SAFeatureBoundedDepthHeuristic(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.FOCUS), maxLevel),
+			new SAFeatureBoundedDepthHeuristic(new GoalProximityHeuristic(getStateMachine(), GoalProximityHeuristic.Mode.ONLY_NONTERMINAL), maxLevel),
+			new SAFeatureBoundedDepthHeuristic(new GoalProximityHeuristic(getStateMachine(), GoalProximityHeuristic.Mode.ONLY_TERMINAL), maxLevel)
 		}));
 
 		this.agent = new LearnerQGlobalLinear(getRole(), getStateMachine(), features, ALPHA, EPSILON);
@@ -80,7 +97,7 @@ public class QPlayer extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "Don't hate the bounded depth player";
+		return "Don't hate the Q player";
 	}
 
 }

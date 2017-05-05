@@ -9,22 +9,24 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.dhtp.util.DebugLog;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public abstract class SAFeature {
-	protected static boolean DEBUG = false;
+	protected static final boolean DEBUG = false;
 
 	private long timeout;
 
 	public abstract int size();
+	public abstract List<String> toStrings();
 	public abstract List<Double> compute(StateMachine machine, Role role, MachineState state, Move move, long timeoutDuration) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException;
 
 	protected boolean printDebug(String message) {
-		if (!DEBUG){
+		if (!SAFeature.DEBUG){
 			return false;
 		}
 
-		System.err.println(message);
+		DebugLog.output(message);
 		return true;
 	}
 

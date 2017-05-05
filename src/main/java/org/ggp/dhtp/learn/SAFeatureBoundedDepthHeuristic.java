@@ -46,13 +46,18 @@ public class SAFeatureBoundedDepthHeuristic extends SAFeature {
 			return false;
 		} else {
 			this.reachedAllTerminal = false;
-			return !this.bounder.shouldExpand(role, state, level);
+			return this.bounder.shouldExpand(role, state, level);
 		}
 	}
 
 	public SAFeatureBoundedDepthHeuristic(Heuristic heuristic, int maxLevel) {
 		this.heuristic = heuristic;
 		this.maxLevel = maxLevel;
+	}
+
+	@Override
+	public List<String> toStrings() {
+		return Arrays.asList("BD(" + this.maxLevel + ", " + this.heuristic.toString() + ")");
 	}
 
 	@Override
@@ -68,11 +73,13 @@ public class SAFeatureBoundedDepthHeuristic extends SAFeature {
 	@Override
 	public Double computeFirst(StateMachine machine, Role role, MachineState state, Move move, long timeoutDuration) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		setTimeoutDuration(timeoutDuration);
+		//DebugLog.output(toStrings().get(0) + " computing for " + timeoutDuration);
 
 		if (machine.isTerminal(state))
 			return this.heuristic.evalState(role, state);
 		double worstResult = 1.0;
-		for(int iteration = 0; iteration < this.maxLevel && !this.reachedAllTerminal ; iteration++){
+		this.reachedAllTerminal = false;
+		for(int iteration = 0; iteration < this.maxLevel && !this.reachedAllTerminal; iteration++){
 			this.bounder = new FixedBounder(iteration);
 			this.reachedAllTerminal = true;
 			double iterResult = worstMoveValue(role, machine, state, move);
@@ -111,7 +118,6 @@ public class SAFeatureBoundedDepthHeuristic extends SAFeature {
 				}
 			}
 		} catch (PhaseTimeoutException pt) {
-			printDebug("Timed out");
 			this.shiftwidth = 0;
 		}
 
@@ -139,7 +145,7 @@ public class SAFeatureBoundedDepthHeuristic extends SAFeature {
 
 	private double maxScore(Role role, StateMachine machine, MachineState state, double alpha, double beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException{
 		checkTimeout();
-		if(expFn(role, machine, state, this.shiftwidth)) {
+		if(!expFn(role, machine, state, this.shiftwidth)) {
 			printDebug("Should not expand state -- defaulting to heuristic");
 			return evalFn(role, state);
 		} else {

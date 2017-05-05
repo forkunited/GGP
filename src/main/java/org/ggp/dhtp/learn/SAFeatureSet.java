@@ -27,6 +27,13 @@ public class SAFeatureSet {
 		return this.features.size();
 	}
 
+	public List<String> toStrings() {
+		List<String> strs = new ArrayList<String>();
+		for (SAFeature feature : this.features)
+			strs.addAll(feature.toStrings());
+		return strs;
+	}
+
 	public int size() {
 		return this.size;
 	}
@@ -39,10 +46,12 @@ public class SAFeatureSet {
 		for (int i = 0; i < this.features.size(); i++) {
 			long featureDuration = timeLeft/(this.features.size() - i);
 			SAFeature feature = this.features.get(i);
-			if (feature.size() == 1)
+			if (feature.size() == 1) {
 				vector.add(feature.computeFirst(machine, role, state, move, featureDuration));
-			else
+				//DebugLog.output("Feature value: " + vector.get(vector.size() - 1));
+			} else {
 				vector.addAll(feature.compute(machine, role, state, move, featureDuration));
+			}
 			timeLeft = endTime - System.currentTimeMillis();
 		}
 

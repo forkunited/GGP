@@ -12,6 +12,7 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.dhtp.util.DebugLog;
 
 public class LearnerQGlobalLinear {
 	private static final long LEARNING_BUFFER_TIME = 1000;
@@ -40,10 +41,24 @@ public class LearnerQGlobalLinear {
 		this.random = new Random();
 	}
 
+	@Override
+	public String toString() {
+		List<String> fstrs = this.features.toStrings();
+		StringBuilder str = new StringBuilder();
+		for (int i = 0; i < this.features.size(); i++)
+			str.append(fstrs.get(i)).append(": ").append(this.weights.get(i)).append("\n");
+		return str.toString();
+	}
+
 	// FIXME Vectorize with linear algebra library
 	protected List<List<Double>> computeFeatures(MachineState state, long timeoutDuration) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
 		List<List<Double>> F = new ArrayList<List<Double>>();
-		List<Move> moves = this.machine.getLegalMoves(state, this.role);
+		List<Move> moves = null;
+		try {
+			moves = this.machine.getLegalMoves(state, this.role);
+		} catch (MoveDefinitionException e) {
+			return F;
+		}
 
 		long timeLeft = timeoutDuration;
 		long endTime = System.currentTimeMillis() + timeoutDuration;
@@ -63,10 +78,15 @@ public class LearnerQGlobalLinear {
 		long timeLeft = timeoutDuration;
 		long endTime = System.currentTimeMillis() + timeoutDuration - LEARNING_BUFFER_TIME;
 
+		DebugLog.output("Q learning until " + endTime);
+
 		int i = 0;
-		while (System.currentTimeMillis() < endTime && i < iterations) {
+		while (System.currentTimeMillis() < endTime || i < iterations) {
+			DebugLog.output("Q iteration " + i);
+
 			if (curF == null) {
-				long iterationDuration = timeLeft / (iterations - i + 1);
+				int norm = (i < iterations) ? (iterations - i + 1) : 1;
+				long iterationDuration = timeLeft / norm;
 				curF = computeFeatures(curState, iterationDuration);
 			}
 
@@ -76,7 +96,8 @@ public class LearnerQGlobalLinear {
 			MachineState nextState = this.machine.getNextState(curState, moves);
 
 			timeLeft = endTime - System.currentTimeMillis();
-			long iterationDuration = timeLeft / (iterations - i);
+			int norm = (i < iterations) ? (iterations - i) : 1;
+			long iterationDuration = timeLeft / norm;
 			List<List<Double>> nextF = computeFeatures(nextState, iterationDuration);
 
 			updateF(curState, learnerMoveIndex, nextState, curF, nextF);
@@ -90,8 +111,11 @@ public class LearnerQGlobalLinear {
 			}
 
 			timeLeft = endTime - System.currentTimeMillis();
+
 			i++;
 		}
+
+		DebugLog.output("Q learned\n" + toString());
 	}
 
 	public Move act(MachineState state, long timeoutDuration) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
@@ -119,10 +143,9 @@ public class LearnerQGlobalLinear {
 				return actIndex(state, ExplorationStrategy.NONE, F);
 			}
 		} else {
-			List<Move> moves = this.machine.getLegalMoves(state, this.role);
-			double bestQ = Double.NEGATIVE_INFINITY;
+			double bestQ = 0.0;
 			int bestMoveIndex = 0;
-			for (int i = 0; i < moves.size(); i++) {
+			for (int i = 0; i < F.size(); i++) {
 				double curQ = Qf(state, F.get(i));
 				if (curQ > bestQ) {
 					bestQ = curQ;
@@ -140,7 +163,7 @@ public class LearnerQGlobalLinear {
 	}
 
 	protected double UF(MachineState state, List<List<Double>> F) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-		double Q_max = Double.NEGATIVE_INFINITY;
+		double Q_max = 0.0;
 
 		for (int i = 0; i < F.size(); i++) {
 			Q_max = Math.max(Qf(state, F.get(i)), Q_max);
@@ -170,7 +193,8 @@ public class LearnerQGlobalLinear {
 			reward = this.machine.getGoal(nextState, this.role);
 		double tdError = reward + UF(nextState, nextF) - Qf(state, curF.get(moveIndex));
 		List<Double> f = curF.get(moveIndex);
-		for (int i = 0; i < f.size(); i++)
+		for (int i = 0; i < f.size(); i++) {
 			this.weights.set(i, this.weights.get(i) + this.alpha * tdError * f.get(i));
+		}
 	}
 }

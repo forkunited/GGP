@@ -31,6 +31,11 @@ public class GoalProximityHeuristic extends Heuristic {
 	}
 
 	@Override
+	public String toString() {
+		return "GoalProximity(" + this.mode + ")";
+	}
+
+	@Override
 	public double evalState(Role role, MachineState state) throws GoalDefinitionException {
 		if (this.mode == Mode.ONLY_TERMINAL)
 			return !this.machine.isTerminal(state) ? 0.0 : this.machine.getGoal(state, role) / this.norm;
