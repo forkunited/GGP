@@ -17,9 +17,10 @@ import org.ggp.dhtp.mcts.MCTSNode;
 import org.ggp.dhtp.util.DebugLog;
 
 public class MCTSPlayer extends StateMachineGamer {
-	private static final double TIMEOUT_SAFETY_MARGIN = 0.25;
+	private static final double TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double BEST_MOVE_SELECTION_MARGIN = 0.05;
-	private static final double EXPLORATION_COEFFICIENT = 1.0; // learning rate
+	private static final double EXPLORATION_COEFFICIENT = 70.0;
+	private MCTSNode currNode;
 
 	Player p;
 
@@ -35,7 +36,27 @@ public class MCTSPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		long turnTimeout = (long)(TIMEOUT_SAFETY_MARGIN * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
+		int numDepthCharges = 0;
 
+		StateMachine machine = getStateMachine();
+		Role role = getRole();
+
+		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
+		currNode = new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT);
+
+
+		try{
+			while (System.currentTimeMillis() < turnTimeout) {
+				currNode.performIteration(turnTimeout);
+				numDepthCharges++;
+			}
+		} catch (Exception e){
+			System.out.println(e);
+		}
+		finally {
+			DebugLog.output("Metagame Num Depth Charges:"+numDepthCharges);
+		}
 	}
 
 	@Override
@@ -49,17 +70,25 @@ public class MCTSPlayer extends StateMachineGamer {
 		Move bestMove = null;
 		try {
 			long turnTimeout = (long)(TIMEOUT_SAFETY_MARGIN * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
+			long mctsTimeout = (long)((TIMEOUT_SAFETY_MARGIN-BEST_MOVE_SELECTION_MARGIN) * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 			int numDepthCharges = 0;
-			MCTSNode rootNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT);
+			if(currNode != null){
+				currNode = currNode.updateState(state);
+			}
+
+			if(currNode == null){
+				DebugLog.output("Could not find node in search tree - creating new MCTS tree");
+				currNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT);
+			}
 
 			try{
-				while (System.currentTimeMillis() < turnTimeout) {
-					rootNode.performIteration(turnTimeout);
+				while (System.currentTimeMillis() < mctsTimeout) {
+					currNode.performIteration(mctsTimeout);
 					numDepthCharges++;
 				}
 			} finally {
 				DebugLog.output("Num Depth Charges:"+numDepthCharges);
-				bestMove = rootNode.getBestMove(timeout-100);
+				bestMove = currNode.getBestMove(turnTimeout);
 			}
 		} catch (Exception e) {
 			System.out.println(e);
