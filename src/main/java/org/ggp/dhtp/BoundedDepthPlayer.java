@@ -25,6 +25,7 @@ import org.ggp.dhtp.util.HeuristicEvaluator;
 import org.ggp.dhtp.util.HeuristicFreedom;
 import org.ggp.dhtp.util.HeuristicOpponentFreedom;
 import org.ggp.dhtp.util.HeuristicWeighted;
+import org.ggp.dhtp.util.MCSHeuristic;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class BoundedDepthPlayer extends StateMachineGamer {
@@ -118,20 +119,21 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 				weights = he.generateSimulatedWeights();
 
 			} catch (Exception e){
-				System.err.println(e);
+				System.out.println(e);
 				weights.add(0.20);
 				weights.add(0.20);
 				weights.add(0.20);
 				weights.add(0.20);
 				weights.add(0.20);
 			}
-			DEBUG = true;
+			DEBUG = false;
 			for(int i = 0; i < weights.size(); i++){
 				print_debug("Weight " + i+" is:"+weights.get(i));
 			}
 			DEBUG = false;
 
-			this.h = new HeuristicWeighted(hl, weights);
+			this.h = new HeuristicWeighted(hl, weights); //TODO reinstate the weighted heuristic after testing monte carlo search
+			this.h = new MCSHeuristic(getStateMachine());
 			this.maxLevel = 50;  //TODO Smarter here?
 			this.b = new FixedBounder(this.maxLevel);
 			this.reachedAllTerminal = false;
@@ -151,8 +153,12 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		Move randomMove = machine.getRandomMove(state, role);
 		this.reachedAllTerminal = false;
 		try {
-			turnTimeout = (long)(timeoutSafetyMargin * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
-
+//				turnTimeout = (long)(timeoutSafetyMargin * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
+//				long proposedTimeout = timeout - 3000;
+//				System.out.println("Timeout: " + timeout);
+//				System.out.println("current Timeout: " + turnTimeout );
+//				System.out.println("proposed Timeout: " + proposedTimeout);
+				turnTimeout = timeout - 3000;
 			for(int iteration = 0; iteration < maxLevel && !reachedAllTerminal ; iteration++){
 				this.b = new FixedBounder(iteration);
 				this.reachedAllTerminal = true;
@@ -266,6 +272,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		}
 		else if(expFn(getRole(), state, shiftwidth)){
 			print_debug("Should not expand state -- defaulting to heuristic");
+			this.h.preEval(System.currentTimeMillis() + 100);
 			return evalFn(getRole(), state);
 		}
 		else {
