@@ -11,7 +11,7 @@ public class HeuristicFreedom extends Heuristic {
 	}
 
 	private StateMachine machine;
-	private Type type;
+	protected Type type;
 
 	public HeuristicFreedom(StateMachine machine, Type type) {
 		this.machine = machine;
@@ -19,8 +19,13 @@ public class HeuristicFreedom extends Heuristic {
 	}
 
 	@Override
+	public String toString() {
+		return "Freedom(" + this.type + ")";
+	}
+
+	@Override
 	public double evalState(Role role, MachineState state) throws MoveDefinitionException {
-		int stateMoves = this.machine.getLegalMoves(state, role).size();
+		int stateMoves = (this.machine.isTerminal(state)) ? 0 : this.machine.getLegalMoves(state, role).size();
 		int roleMoves = this.machine.findActions(role).size();
 		double mobility = (double)stateMoves/(double)roleMoves;
 
