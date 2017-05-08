@@ -10,6 +10,7 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.dhtp.util.DebugLog;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class MCTSNode {
@@ -55,9 +56,24 @@ public class MCTSNode {
 
 			this.playerUtil = new ArrayList<Double>(numPlayerMoves);
 			this.playerVisits = new ArrayList<Integer>(numPlayerMoves);
+			for(int i = 0; i < numPlayerMoves; i++){
+				this.playerUtil.add(0.0);
+				this.playerVisits.add(0);
+			}
 			this.opponentUtil = new ArrayList<Double>(numOpponentMoves);
 			this.opponentVisits = new ArrayList<Integer>(numOpponentMoves);
+
+			for(int i = 0; i < numOpponentMoves; i++){
+				this.opponentUtil.add(0.0);
+				this.opponentVisits.add(0);
+			}
+
 			this.combinedMoveVisits = new ArrayList<Integer>(numPlayerMoves*numOpponentMoves);
+
+			for(int i = 0; i < numPlayerMoves*numOpponentMoves; i++){
+				this.combinedMoveVisits.add(0);
+			}
+
 			this.children = new ArrayList<MCTSNode>();
 		}
 	}
@@ -66,11 +82,22 @@ public class MCTSNode {
 		int playerMoveIdx = getPlayerIdxFromChildIdx(childIdx);
 		int opponentMoveIdx = getOpponentIdxFromChildIdx(childIdx);
 
+		DebugLog.output("Player Idx:"+playerMoveIdx);
+		DebugLog.output("Opponent Idx:"+opponentMoveIdx);
+
 		double playerUtility = playerUtil.get(playerMoveIdx);
-		double opponentUtility = opponentUtil.get(playerMoveIdx);
+		double opponentUtility = opponentUtil.get(opponentMoveIdx);
 		int numPlayerVisits = playerVisits.get(playerMoveIdx);
 		int numOpponentVisits = opponentVisits.get(opponentMoveIdx);
 		int numCombinedMoveVisits = combinedMoveVisits.get(childIdx);
+
+
+		DebugLog.output("Player Util :"+playerUtility);
+		DebugLog.output("Opponent Util :"+opponentUtility);
+		DebugLog.output("Player Visits :"+numPlayerVisits);
+		DebugLog.output("Opponent Visits :"+numOpponentVisits);
+		DebugLog.output("Combined Move Visits"+numCombinedMoveVisits);
+		DebugLog.output("Total Visits"+totalVisits);
 
 		return -1*opponentUtility/numOpponentVisits
 				+ playerUtility/numPlayerVisits
@@ -83,6 +110,7 @@ public class MCTSNode {
 		for(int i = 0; i < numPlayerMoves; i++){
 			PhaseTimeoutException.checkTimeout(turnTimeout);
 			double averageUtility = playerVisits.get(i) == 0 ? 0 : playerUtil.get(i) / playerVisits.get(i);
+			DebugLog.output("Utility for move "+i+" is "+averageUtility);
 			if(bestMove == null || bestUtility < averageUtility){
 				bestMove = playerMoves.get(i);
 				bestUtility = averageUtility;
@@ -130,13 +158,17 @@ public class MCTSNode {
 		}
 
 		double bpr;
+		int selectedIdx;
 		if(children.size() < numPlayerMoves*numOpponentMoves){ // in expansion phase
+			selectedIdx = children.size();
 			bpr = expandAndSimulate();
 		} else {
 			double bestScore = 0;
 			int bestIdx = 0;
 			for (int i =0; i < children.size(); i++){
+				DebugLog.output("Calculating selection score for child "+i);
 				double score = getSelectionScore(i);
+				DebugLog.output("Selection score for child "+i+":"+score);
 				if(score > bestScore){
 					bestIdx = i;
 					bestScore = score;
@@ -144,18 +176,18 @@ public class MCTSNode {
 			}
 			MCTSNode selectedChild = children.get(bestIdx);
 			bpr =  selectedChild.performIteration(turnTimeout);
-
-			//update stats
-			int playerMoveIdx = getPlayerIdxFromChildIdx(bestIdx);
-			int opponentMoveIdx = getOpponentIdxFromChildIdx(bestIdx);
-
-			this.playerUtil.set(playerMoveIdx, this.playerUtil.get(playerMoveIdx)+bpr);
-			this.opponentUtil.set(opponentMoveIdx, this.opponentUtil.get(opponentMoveIdx)+bpr);
-			this.playerVisits.set(playerMoveIdx, this.playerVisits.get(playerMoveIdx)+1);
-			this.opponentVisits.set(opponentMoveIdx, this.opponentVisits.get(opponentMoveIdx)+1);
-			this.combinedMoveVisits.set(opponentMoveIdx, this.combinedMoveVisits.get(bestIdx)+1);
-			this.totalVisits+=1;
+			selectedIdx = bestIdx;
 		}
+		//update stats
+		int playerMoveIdx = getPlayerIdxFromChildIdx(selectedIdx);
+		int opponentMoveIdx = getOpponentIdxFromChildIdx(selectedIdx);
+
+		this.playerUtil.set(playerMoveIdx, this.playerUtil.get(playerMoveIdx)+bpr);
+		this.opponentUtil.set(opponentMoveIdx, this.opponentUtil.get(opponentMoveIdx)+bpr);
+		this.playerVisits.set(playerMoveIdx, this.playerVisits.get(playerMoveIdx)+1);
+		this.opponentVisits.set(opponentMoveIdx, this.opponentVisits.get(opponentMoveIdx)+1);
+		this.combinedMoveVisits.set(selectedIdx, this.combinedMoveVisits.get(selectedIdx)+1);
+		this.totalVisits+=1;
 
 		return bpr;
 	}

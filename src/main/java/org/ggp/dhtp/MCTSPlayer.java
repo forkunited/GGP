@@ -48,21 +48,21 @@ public class MCTSPlayer extends StateMachineGamer {
 		Move randomMove = machine.getRandomMove(state, role);
 		Move bestMove = null;
 		try {
-			long mcsTimeout = (long)((TIMEOUT_SAFETY_MARGIN + BEST_MOVE_SELECTION_MARGIN) * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 			long turnTimeout = (long)(TIMEOUT_SAFETY_MARGIN * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 			int numDepthCharges = 0;
 			MCTSNode rootNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT);
 
 			try{
-				while (System.currentTimeMillis() < mcsTimeout) {
-					rootNode.performIteration(mcsTimeout);
+				while (System.currentTimeMillis() < turnTimeout) {
+					rootNode.performIteration(turnTimeout);
 					numDepthCharges++;
 				}
 			} finally {
 				DebugLog.output("Num Depth Charges:"+numDepthCharges);
-				bestMove = rootNode.getBestMove(turnTimeout);
+				bestMove = rootNode.getBestMove(timeout-100);
 			}
 		} catch (Exception e) {
+			System.out.println(e);
 			if (bestMove == null) {
 				DebugLog.output("Picking Random Move");
 				bestMove = randomMove;
