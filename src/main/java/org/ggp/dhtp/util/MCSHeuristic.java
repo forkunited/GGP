@@ -42,10 +42,10 @@ public class MCSHeuristic extends Heuristic {
 			}
 
 			if ( System.currentTimeMillis() > finishTime) { /* This state eval has timed out */
-				return resultSum / (norm *depthChargeCount);
+				return depthChargeCount == 0 ? 0 : resultSum / (norm *depthChargeCount);
 			}
 		}
-		return resultSum / (norm * depthChargeCount);
+		return depthChargeCount == 0 ? 0 : resultSum / (norm * depthChargeCount);
 
 	}
 
