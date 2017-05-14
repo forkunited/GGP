@@ -58,7 +58,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public boolean isTerminal(MachineState state) {
         PropNetBackPropUtils.markBases(state, propNet);
-        return PropNetBackPropUtils.propMarkP(propNet.getTerminalProposition());
+        return PropNetBackPropUtils.propMarkP(propNet.getTerminalProposition(), propNet);
     }
 
     /**
@@ -75,7 +75,7 @@ public class SamplePropNetStateMachine extends StateMachine {
         Set<Proposition> goalProps = propNet.getGoalPropositions().get(role);
         Proposition pMatch = null;
         for (Proposition p : goalProps) {
-        	if (PropNetBackPropUtils.propMarkP(p)) {
+        	if (PropNetBackPropUtils.propMarkP(p, propNet)) {
         		if (pMatch != null) {
         			throw new GoalDefinitionException(state, role);
         		}
@@ -100,7 +100,7 @@ public class SamplePropNetStateMachine extends StateMachine {
         	/* Transition.getValue() returns true if INIT feeds into Transition */
         	baseProp.setValue(baseProp.getSingleInput().getValue());
         }
-        return getStateFromBase(); //TODO This can be optimized
+        return getStateFromBaseSimple(); //TODO This can be optimized
     }
 
     /**
@@ -128,7 +128,7 @@ public class SamplePropNetStateMachine extends StateMachine {
         ArrayList<Move> moves = new ArrayList<Move>();
     	for (Proposition p: legalProps) {
     		/* Only add the move if its allowed in this state */
-    		if (PropNetBackPropUtils.propMarkP(p)) {
+    		if (PropNetBackPropUtils.propMarkP(p, propNet)) {
     			moves.add(getMoveFromProposition(p));
     		}
     	}
@@ -142,14 +142,14 @@ public class SamplePropNetStateMachine extends StateMachine {
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
     	PropNetBackPropUtils.markBases(state, propNet);
-    	PropNetBackPropUtils.markActions(state, toDoes(moves), propNet); /* TODO toDoes() can be optimized */
+    	PropNetBackPropUtils.markActions(toDoes(moves), propNet); /* TODO toDoes() can be optimized */
     	/* Update bases */
     	for (Proposition baseProp : propNet.getBasePropositions().values()) {
         	/* Transition.getValue() returns true if INIT feeds into Transition */
-        	baseProp.setValue(PropNetBackPropUtils.propMarkP(baseProp.getSingleInput()));
+        	baseProp.setValue(PropNetBackPropUtils.propMarkP(baseProp.getSingleInput(), propNet));
         }
 
-    	return getStateFromBase(); /* TODO this can be optimized */
+    	return getStateFromBaseSimple(); /* TODO this can be optimized */
     }
 
     /**
@@ -234,6 +234,25 @@ public class SamplePropNetStateMachine extends StateMachine {
         GdlRelation relation = (GdlRelation) goalProposition.getName();
         GdlConstant constant = (GdlConstant) relation.get(1);
         return Integer.parseInt(constant.toString());
+    }
+
+    /**
+     * Machine state generation from bases without directly reading
+     * the incoming transitions value.  Allows for generalizing
+     * across init and next state
+     */
+    public MachineState getStateFromBaseSimple()
+    {
+        Set<GdlSentence> contents = new HashSet<GdlSentence>();
+        for (Proposition p : propNet.getBasePropositions().values())
+        {
+            if (p.getValue())
+            {
+                contents.add(p.getName());
+            }
+
+        }
+        return new MachineState(contents);
     }
 
     /**
