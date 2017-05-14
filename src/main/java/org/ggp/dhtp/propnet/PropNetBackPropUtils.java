@@ -3,9 +3,10 @@ package org.ggp.dhtp.propnet;
 
 import java.util.List;
 
+import org.ggp.base.util.gdl.grammar.GdlSentence;
+import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.statemachine.MachineState;
-import org.ggp.base.util.statemachine.Move;
 
 public class PropNetBackPropUtils {
 	/* Update the assignment of a propnet given the new state */
@@ -14,13 +15,13 @@ public class PropNetBackPropUtils {
 	}
 
 	/* */
-	public static void markActions(MachineState state, List<Move> move, PropNet propnet) {
+	public static void markActions(MachineState state, List<GdlSentence> doeses, PropNet propNet) {
 		return;
 	}
 
 	/* Read the assignment of a proposition */
 
-	public static boolean propMarkP() {
+	public static boolean propMarkP(Component prop) {
 		return true;
 	}
 

@@ -23,6 +23,7 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBuilder;
+import org.ggp.dhtp.propnet.PropNetBackPropUtils;
 
 
 @SuppressWarnings("unused")
@@ -56,8 +57,8 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state) {
-        // TODO: Compute whether the MachineState is terminal.
-        return false;
+        PropNetBackPropUtils.markBases(state, propNet);
+        return PropNetBackPropUtils.propMarkP(propNet.getTerminalProposition());
     }
 
     /**
@@ -70,8 +71,19 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
-        // TODO: Compute the goal for role in state.
-        return -1;
+        PropNetBackPropUtils.markBases(state, propNet);
+        Set<Proposition> goalProps = propNet.getGoalPropositions().get(role);
+        Proposition pMatch = null;
+        for (Proposition p : goalProps) {
+        	if (PropNetBackPropUtils.propMarkP(p)) {
+        		if (pMatch != null) {
+        			throw new GoalDefinitionException(state, role);
+        		}
+        		pMatch = p;
+        	}
+        }
+        GdlSentence name = pMatch.getName();
+        return getGoalValue(pMatch);
     }
 
     /**
@@ -81,8 +93,14 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public MachineState getInitialState() {
-        // TODO: Compute the initial state.
-        return null;
+        Proposition init = propNet.getInitProposition();
+        init.setValue(true);
+        /* Propagate to all base propositions */
+        for (Proposition baseProp : propNet.getBasePropositions().values()) {
+        	/* Transition.getValue() returns true if INIT feeds into Transition */
+        	baseProp.setValue(baseProp.getSingleInput().getValue());
+        }
+        return getStateFromBase(); //TODO This can be optimized
     }
 
     /**
@@ -91,8 +109,12 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> findActions(Role role)
             throws MoveDefinitionException {
-        // TODO: Compute legal moves.
-        return null;
+    	Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
+    	ArrayList<Move> moves = new ArrayList<Move>();
+    	for (Proposition p: legalProps) {
+    		moves.add(getMoveFromProposition(p));
+    	}
+        return moves;
     }
 
     /**
@@ -101,8 +123,16 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> getLegalMoves(MachineState state, Role role)
             throws MoveDefinitionException {
-        // TODO: Compute legal moves.
-        return null;
+        PropNetBackPropUtils.markBases(state, propNet);
+        Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
+        ArrayList<Move> moves = new ArrayList<Move>();
+    	for (Proposition p: legalProps) {
+    		/* Only add the move if its allowed in this state */
+    		if (PropNetBackPropUtils.propMarkP(p)) {
+    			moves.add(getMoveFromProposition(p));
+    		}
+    	}
+        return moves;
     }
 
     /**
@@ -111,8 +141,15 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
-        // TODO: Compute the next state.
-        return null;
+    	PropNetBackPropUtils.markBases(state, propNet);
+    	PropNetBackPropUtils.markActions(state, toDoes(moves), propNet); /* TODO toDoes() can be optimized */
+    	/* Update bases */
+    	for (Proposition baseProp : propNet.getBasePropositions().values()) {
+        	/* Transition.getValue() returns true if INIT feeds into Transition */
+        	baseProp.setValue(PropNetBackPropUtils.propMarkP(baseProp.getSingleInput()));
+        }
+
+    	return getStateFromBase(); /* TODO this can be optimized */
     }
 
     /**
