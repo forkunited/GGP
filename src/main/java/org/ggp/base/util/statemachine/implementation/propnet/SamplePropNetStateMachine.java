@@ -1,6 +1,7 @@
 package org.ggp.base.util.statemachine.implementation.propnet;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,6 +43,7 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public void initialize(List<Gdl> description) {
+    	//System.out.println("Initializing");
         try {
             propNet = OptimizingPropNetFactory.create(description);
             roles = propNet.getRoles();
@@ -57,6 +59,7 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state) {
+    	//System.out.println("Is terminal");
         PropNetBackPropUtils.markBases(state, propNet);
         return PropNetBackPropUtils.propMarkP(propNet.getTerminalProposition(), propNet);
     }
@@ -71,6 +74,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
+    	//System.out.println("Get Goal");
         PropNetBackPropUtils.markBases(state, propNet);
         Set<Proposition> goalProps = propNet.getGoalPropositions().get(role);
         Proposition pMatch = null;
@@ -81,6 +85,9 @@ public class SamplePropNetStateMachine extends StateMachine {
         		}
         		pMatch = p;
         	}
+        }
+        if (pMatch == null) {
+        	throw new GoalDefinitionException(state, role);
         }
         GdlSentence name = pMatch.getName();
         return getGoalValue(pMatch);
@@ -93,6 +100,7 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public MachineState getInitialState() {
+    	//System.out.println("Get Init state");
         Proposition init = propNet.getInitProposition();
         init.setValue(true);
         /* Propagate to all base propositions */
@@ -109,6 +117,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> findActions(Role role)
             throws MoveDefinitionException {
+    	//System.out.println("Find actions");
     	Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
     	ArrayList<Move> moves = new ArrayList<Move>();
     	for (Proposition p: legalProps) {
@@ -123,6 +132,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> getLegalMoves(MachineState state, Role role)
             throws MoveDefinitionException {
+    	//System.out.println("Get Legal moves");
         PropNetBackPropUtils.markBases(state, propNet);
         Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
         ArrayList<Move> moves = new ArrayList<Move>();
@@ -141,14 +151,24 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
+    	//String TS = new SimpleDateFormat("yyyyMMddHHmm'.txt'").format(new Date());
+    	//System.out.println("Compute next state");
     	PropNetBackPropUtils.markBases(state, propNet);
     	PropNetBackPropUtils.markActions(toDoes(moves), propNet); /* TODO toDoes() can be optimized */
-    	/* Update bases */
+    	Map<Proposition, Boolean> baseVals = new HashMap<Proposition, Boolean>();
+    	/* Record bases */
     	for (Proposition baseProp : propNet.getBasePropositions().values()) {
-        	/* Transition.getValue() returns true if INIT feeds into Transition */
-        	baseProp.setValue(PropNetBackPropUtils.propMarkP(baseProp.getSingleInput(), propNet));
+    		if (PropNetBackPropUtils.propMarkP(baseProp.getSingleInput().getSingleInput(), propNet)) {
+    			baseVals.put(baseProp, true);
+    		} else {
+    			baseVals.put(baseProp, false);
+    		}
         }
 
+    	/* Update bases */
+    	for (Proposition baseProp : propNet.getBasePropositions().values()) {
+    		baseProp.setValue(baseVals.get(baseProp));
+    	}
     	return getStateFromBaseSimple(); /* TODO this can be optimized */
     }
 

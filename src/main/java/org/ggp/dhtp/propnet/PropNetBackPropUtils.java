@@ -20,13 +20,12 @@ import org.ggp.base.util.statemachine.MachineState;
 public class PropNetBackPropUtils {
 	/* Update the assignment of a propnet given the new state */
 	public static void markBases(MachineState state, PropNet propNet) {
+
 		/* Remove sentences to only include base */
 		Set<GdlSentence> baseSentences = state.clone().getContents(); /* Can probably optimize this clone */
 		for (Iterator<GdlSentence> i = baseSentences.iterator(); i.hasNext();) {
 			GdlSentence sentence = i.next();
-			if (!"base".equals(sentence.getName().toString())) {
-				i.remove();
-			}
+			assert("true".equals(sentence.getName()));
 		}
 		/* Set propnet base values to match state */
 		for (Proposition p : propNet.getBasePropositions().values()) {
@@ -40,8 +39,9 @@ public class PropNetBackPropUtils {
 
 	/* Update the assignment of a propnet given the new moves */
 	public static void markActions(List<GdlSentence> doeses, PropNet propNet) {
+
 		for (Proposition p : propNet.getInputPropositions().values()) {
-			if (doeses.contains(p)) {
+			if (doeses.contains(p.getName())) {
 				p.setValue(true);
 			} else {
 				p.setValue(false);
@@ -54,47 +54,70 @@ public class PropNetBackPropUtils {
 	public static boolean propMarkP(Component prop, PropNet propNet) {
 		HashSet<Proposition> Base = new HashSet(propNet.getBasePropositions().values());
 		HashSet<Proposition> Input = new HashSet(propNet.getInputPropositions().values());
+		Proposition Init = propNet.getInitProposition();
 
-		return propMarkPInternal(prop, Base, Input);
+		return propMarkPInternal(prop, Base, Input, Init);
 	}
 
-    private static boolean propMarkPInternal(Component prop, Set<Proposition> Base, Set<Proposition> Input) {
-    	if (Base.contains(prop) || Input.contains(prop)) {
+    private static boolean propMarkPInternal(Component prop, Set<Proposition> Base, Set<Proposition> Input, Proposition Init) {
+    	if (Base.contains(prop) ) {
+//    		System.out.println("Base prop: ");
+//    		System.out.println(prop.toString());
     		return prop.getValue();
-    	} else if (prop instanceof Proposition) {
-    		return propMarkPInternal(prop.getSingleInput(), Base, Input);
+    	}  else if ( Input.contains(prop)){
+//    		System.out.println("Input prop: ");
+//    		System.out.println(prop.toString());
+    		return prop.getValue();
+    	} else if (prop == Init) {
+//    		System.out.println("Init prop: ");
+//    		System.out.println(prop.toString());
+    		return false;
+        } else if (prop instanceof Proposition) {
+//    		System.out.println("View prop: ");
+//    		System.out.println(prop.toString());
+    		return propMarkPInternal(prop.getSingleInput(), Base, Input, Init);
     	} else if (prop instanceof And) {
-    		return propMarkPAnd(prop, Base, Input);
+//    		System.out.println("Conjunction: ");
+//    		System.out.println(prop.toString());
+    		return propMarkPAnd(prop, Base, Input, Init);
     	} else if (prop instanceof Or) {
-    		return propMarkPOr(prop, Base, Input);
+//    		System.out.println("Disjunction: ");
+//    		System.out.println(prop.toString());
+    		return propMarkPOr(prop, Base, Input, Init);
     	} else if (prop instanceof Not) {
-    		return propMarkPNot(prop, Base, Input);
+//    		System.out.println("Inversion: ");
+//    		System.out.println(prop.toString());
+    		return propMarkPNot(prop, Base, Input, Init);
     	} else if (prop instanceof Transition) {
+//    		System.out.println("Transition: ");
+//    		System.out.println(prop.toString());
     		assert(false);  // This branch should never be taken, as base props are base case
     		return false;
     	} else {
+//    		System.out.println("Constant prop: ");
+//    		System.out.println(prop.toString());
     		assert(prop instanceof Constant);
     		return prop.getValue();
     	}
 
     }
 
-    private static boolean propMarkPOr(Component prop, Set<Proposition> Base, Set<Proposition> Input) {
+    private static boolean propMarkPOr(Component prop, Set<Proposition> Base, Set<Proposition> Input, Proposition Init) {
     	for (Component component: prop.getInputs()) {
-    		if (propMarkPInternal(component, Base, Input)) {
+    		if (propMarkPInternal(component, Base, Input, Init)) {
     			return true;
     		}
     	}
     	return false;
     }
 
-    private static boolean propMarkPNot(Component prop, Set<Proposition> Base, Set<Proposition> Input) {
-    	return !propMarkPInternal(prop.getSingleInput(), Base, Input);
+    private static boolean propMarkPNot(Component prop, Set<Proposition> Base, Set<Proposition> Input, Proposition Init) {
+    	return !propMarkPInternal(prop.getSingleInput(), Base, Input, Init);
     }
 
-    private static boolean propMarkPAnd(Component prop, Set<Proposition> Base, Set<Proposition> Input) {
+    private static boolean propMarkPAnd(Component prop, Set<Proposition> Base, Set<Proposition> Input, Proposition Init) {
     	for (Component component: prop.getInputs()){
-    		if (!propMarkPInternal(component, Base, Input)) {
+    		if (!propMarkPInternal(component, Base, Input, Init)) {
     			return false;
     		}
     	}
