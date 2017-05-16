@@ -1,10 +1,8 @@
 package org.ggp.dhtp.mcts;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -22,9 +20,7 @@ public class MCTSNode {
 	MCTSNode parent;
 	List<MCTSNode> children;
 	private MachineState state;
-	private MachineState oldState;
 	private StateMachine machine;
-	private StateMachine oldMachine;
 	private Role player;
 	List<Move> playerMoves;
 	List<List<Move>> opponentMoves;
@@ -36,12 +32,10 @@ public class MCTSNode {
 	private int terminalValue;
 	double explorationCoefficient;
 
-	public MCTSNode(StateMachine machine, StateMachine oldMachine, MachineState state, MachineState oldState, MCTSNode parent, Role player,
+	public MCTSNode(StateMachine machine, MachineState state, MCTSNode parent, Role player,
 			double explorationCoefficient) throws MoveDefinitionException, GoalDefinitionException {
 		this.machine = machine;
-		this.oldMachine = oldMachine;
 		this.state = state;
-		this.oldState = oldState;
 		this.parent = parent;
 		this.playerUtil = null;
 		this.playerVisits = null;
@@ -50,98 +44,6 @@ public class MCTSNode {
 		this.player = player;
 		this.totalVisits = 0;
 		this.explorationCoefficient = explorationCoefficient;
-
-		// Debugging stuff here
-		/* Compare state */
-		ArrayList<String> sentences = new ArrayList<String>();
-		for (GdlSentence sentence : state.getContents()) {
-			sentences.add(sentence.toString());
-		}
-		ArrayList<String> oldSentences = new ArrayList<String>();
-		for (GdlSentence sentence : oldState.getContents()) {
-			oldSentences.add(sentence.toString());
-		}
-		Collections.sort(sentences);
-		Collections.sort(oldSentences);
-		if (!sentences.toString().equals(oldSentences.toString())) {
-			System.out.println("Error states are different between machines");
-			System.out.println("Propnet state: ");
-			System.out.println(sentences.toString());
-			System.out.println("Correct state: ");
-			System.out.println(oldSentences.toString());
-			assert(false);
-		}
-
-		/* Compare legals */
-		ArrayList<String> legals = new ArrayList<String>();
-		for (Move legal : machine.findLegals(player, state)) {
-			legals.add(legal.toString());
-		}
-		ArrayList<String> oldLegals = new ArrayList<String>();
-		for (Move legal : oldMachine.findLegals(player, oldState)) {
-			oldLegals.add(legal.toString());
-		}
-		Collections.sort(legals);
-		Collections.sort(oldLegals);
-
-		if (!legals.toString().equals(oldLegals.toString())){
-			System.out.println("Error legal moves different");
-			System.out.println("Legal moves of buggy propnet machine: ");
-			System.out.println(legals.toString());
-			System.out.println("Legal moves of true machine: ");
-			System.out.println(oldLegals.toString());
-			System.out.println("--------------------------------------");
-		}
-
-		/* Compare possible actions */
-		ArrayList<String> actions = new ArrayList<String>();
-		for (Move action : machine.findActions(player)) {
-			actions.add(action.toString());
-		}
-		ArrayList<String> oldActions = new ArrayList<String>();
-		for (Move action : oldMachine.findActions(player)) {
-			oldActions.add(action.toString());
-		}
-		// Sort actions
-		Collections.sort(actions);
-		Collections.sort(oldActions);
-		System.out.println("All actions of buggy propnet machine: ");
-		System.out.println(actions.toString());
-		System.out.println("All actions of true machine: ");
-		System.out.println(oldActions.toString());
-		System.out.println("--------------------------------------");
-
-		if (!actions.toString().equals(oldActions.toString())){
-			System.out.println("Error possible actions different");
-			System.out.println("All actions of buggy propnet machine: ");
-			System.out.println(actions.toString());
-			System.out.println("All actions of true machine: ");
-			System.out.println(oldActions.toString());
-			System.out.println("--------------------------------------");
-			assert(false);
-		}
-
-		/* Compare goal values */
-		if (oldMachine.getGoal(oldState, player) != machine.getGoal(state, player)) {
-			System.out.println("Error goals not equal");
-			System.out.println("Goal value of buggy propnet machine: ");
-			System.out.println(machine.getGoal(state, player));
-			System.out.println("Goal value of true machine: ");
-			System.out.println(oldMachine.getGoal(oldState, player));
-			System.out.println("--------------------------------------");
-
-			assert(false);
-		}
-
-		/* Compare terminal status */
-		if (oldMachine.isTerminal(oldState) != machine.isTerminal(state)){
-			System.out.println("Error machines don't agree on terminal state");
-			System.out.println("Propnet terminal? " + machine.isTerminal(state));
-			System.out.println("Original terminal? " + oldMachine.isTerminal(oldState));
-			assert(false);
-		}
-		// End debug
-
 
 
 		if (machine.isTerminal(state)) {
@@ -229,8 +131,7 @@ public class MCTSNode {
 		Move playerMove = playerMoves.get(playerMoveIdx);
 		jointMoves.set(playerRoleIdx, playerMove);
 		MachineState newState = machine.getNextState(state, jointMoves);
-		MachineState newOldState = oldMachine.getNextState(oldState, jointMoves);
-		MCTSNode newChild = new MCTSNode(machine, oldMachine, newState, newOldState, this, player, this.explorationCoefficient);
+		MCTSNode newChild = new MCTSNode(machine, newState, this, player, this.explorationCoefficient);
 		children.add(newChild);
 
 		// simulate

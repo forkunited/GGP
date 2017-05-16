@@ -14,11 +14,9 @@ import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
-import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 
 /**
@@ -86,10 +84,6 @@ public abstract class StateMachineGamer extends Gamer
 		return currentState;
 	}
 
-	public final MachineState getCurrentOldState()
-	{
-		return currentOldState;
-	}
 
 	/**
 	 * Returns the role that this gamer is playing as in the game.
@@ -108,10 +102,6 @@ public abstract class StateMachineGamer extends Gamer
 		return stateMachine;
 	}
 
-	public final StateMachine getOldStateMachine()
-	{
-		return oldStateMachine;
-	}
 
     /**
      * Cleans up the role, currentState and stateMachine. This should only be
@@ -123,7 +113,6 @@ public abstract class StateMachineGamer extends Gamer
         role = null;
         currentState = null;
         stateMachine = null;
-        oldStateMachine = null;
         setMatch(null);
         setRoleName(null);
     }
@@ -193,9 +182,6 @@ public abstract class StateMachineGamer extends Gamer
 		{
 			stateMachine = getInitialStateMachine();
 			stateMachine.initialize(getMatch().getGame().getRules());
-			oldStateMachine = new CachedStateMachine(new ProverStateMachine());
-			oldStateMachine.initialize(getMatch().getGame().getRules());
-			currentOldState = oldStateMachine.getInitialState();
 			currentState = stateMachine.getInitialState();
 			role = stateMachine.getRoleFromConstant(getRoleName());
 			getMatch().appendState(currentState.getContents());
@@ -232,7 +218,6 @@ public abstract class StateMachineGamer extends Gamer
 				}
 
 				currentState = stateMachine.getNextState(currentState, moves);
-				currentOldState = oldStateMachine.getNextState(currentOldState, moves);
 				getMatch().appendState(currentState.getContents());
 			}
 
@@ -288,7 +273,5 @@ public abstract class StateMachineGamer extends Gamer
     // Internal state about the current state of the state machine.
     private Role role;
     private MachineState currentState;
-    private MachineState currentOldState;
     private StateMachine stateMachine;
-    private StateMachine oldStateMachine;
 }

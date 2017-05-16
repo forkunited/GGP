@@ -21,7 +21,6 @@ public class MCTSPlayer extends StateMachineGamer {
 	private static final double BEST_MOVE_SELECTION_MARGIN = 0.05;
 	private static final double EXPLORATION_COEFFICIENT = 120.0;
 	private MCTSNode currNode;
-	private StateMachine oldMachine;
 
 	Player p;
 
@@ -40,11 +39,10 @@ public class MCTSPlayer extends StateMachineGamer {
 		long turnTimeout = (long)(TIMEOUT_SAFETY_MARGIN * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 		int numDepthCharges = 0;
 		StateMachine machine = getStateMachine();
-		StateMachine oldMachine = getOldStateMachine();
 		Role role = getRole();
 
 		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-		currNode = new MCTSNode(machine, oldMachine, machine.getInitialState(), oldMachine.getInitialState(), null, role, EXPLORATION_COEFFICIENT);
+		currNode = new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT);
 
 
 		try{
@@ -66,7 +64,6 @@ public class MCTSPlayer extends StateMachineGamer {
 
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
-		MachineState oldState = getCurrentOldState();
 		Role role = getRole();
 		Move randomMove = machine.getRandomMove(state, role);
 		Move bestMove = null;
@@ -80,7 +77,7 @@ public class MCTSPlayer extends StateMachineGamer {
 
 			if(currNode == null){
 				DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-				currNode = new MCTSNode(machine, oldMachine, state, oldState, null, role, EXPLORATION_COEFFICIENT);
+				currNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT);
 			}
 
 			try{
