@@ -94,27 +94,32 @@ public class MCTSNode {
 		}
 
 		/* Compare possible actions */
-//		ArrayList<String> actions = new ArrayList<String>();
-//		for (Move action : machine.findActions(player)) {
-//			actions.add(action.toString());
-//		}
-//		ArrayList<String> oldActions = new ArrayList<String>();
-//		for (Move action : oldMachine.findActions(player)) {
-//			oldActions.add(action.toString());
-//		}
-//		// Sort actions
-//		Collections.sort(actions);
-//		Collections.sort(oldActions);
-//
-//		if (!actions.toString().equals(oldActions.toString())){
-//			System.out.println("Error possible actions different");
-//			System.out.println("All actions of buggy propnet machine: ");
-//			System.out.println(actions.toString());
-//			System.out.println("All actions of true machine: ");
-//			System.out.println(oldActions.toString());
-//			System.out.println("--------------------------------------");
-//			assert(false);
-//		}
+		ArrayList<String> actions = new ArrayList<String>();
+		for (Move action : machine.findActions(player)) {
+			actions.add(action.toString());
+		}
+		ArrayList<String> oldActions = new ArrayList<String>();
+		for (Move action : oldMachine.findActions(player)) {
+			oldActions.add(action.toString());
+		}
+		// Sort actions
+		Collections.sort(actions);
+		Collections.sort(oldActions);
+		System.out.println("All actions of buggy propnet machine: ");
+		System.out.println(actions.toString());
+		System.out.println("All actions of true machine: ");
+		System.out.println(oldActions.toString());
+		System.out.println("--------------------------------------");
+
+		if (!actions.toString().equals(oldActions.toString())){
+			System.out.println("Error possible actions different");
+			System.out.println("All actions of buggy propnet machine: ");
+			System.out.println(actions.toString());
+			System.out.println("All actions of true machine: ");
+			System.out.println(oldActions.toString());
+			System.out.println("--------------------------------------");
+			assert(false);
+		}
 
 		/* Compare goal values */
 		if (oldMachine.getGoal(oldState, player) != machine.getGoal(state, player)) {

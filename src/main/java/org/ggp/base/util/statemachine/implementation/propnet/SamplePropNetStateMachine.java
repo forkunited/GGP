@@ -117,13 +117,38 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> findActions(Role role)
             throws MoveDefinitionException {
-    	//System.out.println("Find actions");
-    	Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
+    	System.out.println("Find actions new");
+    	Map<GdlSentence, Proposition> inputMap = propNet.getInputPropositions();
+    	HashSet<Proposition> legalProps = new HashSet<Proposition>();
+    	Map<Proposition, Proposition> inputLegalMap = propNet.getLegalInputMap();
+    	System.out.println("Everything set up");
+    	for (GdlSentence sentence: inputMap.keySet()){
+    		if (sentence.get(0).toString().equals(role.getName().toString())){
+    			System.out.println("Adding legal prop");
+    			Proposition inputProp = inputMap.get(sentence);
+    			Proposition legalProp = inputLegalMap.get(inputProp);
+    			if (legalProp != null) {
+    				legalProps.add(legalProp);
+    			}
+    		}
+    	}
+    	System.out.println("Constructing moves from legals");
+    	System.out.println(legalProps);
     	ArrayList<Move> moves = new ArrayList<Move>();
+    	System.out.println(moves);
     	for (Proposition p: legalProps) {
+    		System.out.println(p.toString());
     		moves.add(getMoveFromProposition(p));
     	}
-        return moves;
+    	return moves;
+
+
+//    	Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
+//    	ArrayList<Move> moves = new ArrayList<Move>();
+//    	for (Proposition p: legalProps) {
+//    		moves.add(getMoveFromProposition(p));
+//    	}
+//        return moves;
     }
 
     /**
