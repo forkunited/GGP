@@ -84,7 +84,7 @@ public class MCTSPlayer extends StateMachineGamer {
 			}
 
 			try{
-				while (System.currentTimeMillis() < mctsTimeout) {
+				while (System.currentTimeMillis() < mctsTimeout && !currNode.isFullyExplored()) {
 					currNode.performIteration(mctsTimeout);
 					numDepthCharges++;
 				}

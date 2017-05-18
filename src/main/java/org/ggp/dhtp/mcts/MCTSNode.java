@@ -34,6 +34,9 @@ public class MCTSNode {
 	private Map<MachineState,MCTSNode> cachedNodes;
 	private double utilMean;
 	private double utilVariance;
+	private boolean isFullyExplored;
+	private double fullyExploredValue;
+	private Move fullyExploredBestMove;
 
 	public MCTSNode(StateMachine machine, MachineState state, MCTSNode parent, Role player,
 			double explorationCoefficient, Map<MachineState, MCTSNode> cachedNodes) throws MoveDefinitionException, GoalDefinitionException {
@@ -52,6 +55,8 @@ public class MCTSNode {
 		if (machine.isTerminal(state)) {
 			this.isTerminal = true;
 			this.terminalValue = machine.getGoal(state, player);
+			this.isFullyExplored = true;
+			this.fullyExploredValue = terminalValue;
 		} else {
 			this.playerRoleIdx = machine.getRoleIndices().get(player);
 			this.playerMoves = machine.getLegalMoves(state, player);
@@ -80,7 +85,13 @@ public class MCTSNode {
 			}
 
 			this.children = new ArrayList<MCTSNode>();
+			this.isFullyExplored = false;
+			this.fullyExploredValue = 0;
 		}
+	}
+
+	public boolean isFullyExplored(){
+		return this.isFullyExplored;
 	}
 
 	private double getPlayerSelectionScore(int playerMoveIdx) {
@@ -102,6 +113,10 @@ public class MCTSNode {
 	}
 
 	public Move getBestMove(long turnTimeout) throws PhaseTimeoutException {
+		if(isFullyExplored){
+			DebugLog.output("Fully explored -- returning best move");
+			return fullyExploredBestMove;
+		}
 		Move bestMove = null;
 		double bestUtility = 0;
 		for (int i = 0; i < numPlayerMoves; i++) {
@@ -115,6 +130,44 @@ public class MCTSNode {
 
 		}
 		return bestMove;
+	}
+
+	private boolean fullyExploreNode(){
+		if(isFullyExplored){
+			return true;
+		}
+		if(children.size() != numPlayerMoves * numOpponentMoves){
+			return false;
+		}
+		for(MCTSNode child : children){
+			if(!child.isFullyExplored){
+				return false;
+			}
+		}
+		DebugLog.output("All children fully explored -- collapsing state!");
+		double minimaxScore = 0;
+		Move minimaxMove = null;
+		for (int i = 0; i < numPlayerMoves; i++){
+			double minScore = 0;
+			boolean foundMinScore = false;
+			for (int j = 0; j < numOpponentMoves; j++) {
+				// do minimax here
+				int childIdx = i*numOpponentMoves+j;
+				double childFullyExploredVal = children.get(childIdx).fullyExploredValue;
+				if(!foundMinScore || childFullyExploredVal < minScore){
+					minScore = childFullyExploredVal;
+					foundMinScore = true;
+				}
+			}
+			if(minScore > minimaxScore || minimaxMove == null){
+				minimaxScore = minScore;
+				minimaxMove = playerMoves.get(i);
+			}
+		}
+		this.isFullyExplored = true;
+		this.fullyExploredValue = minimaxScore;
+		this.fullyExploredBestMove = minimaxMove;
+		return true;
 	}
 
 	private int getPlayerIdxFromChildIdx(int childIdx) {
@@ -157,6 +210,10 @@ public class MCTSNode {
 			return terminalValue;
 		}
 
+		if(fullyExploreNode()){
+			return fullyExploredValue;
+		}
+
 		double bpr;
 		int selectedIdx;
 		if (children.size() < numPlayerMoves * numOpponentMoves) { // in
@@ -169,6 +226,16 @@ public class MCTSNode {
 			double bestPlayerScore = 0;
 			int bestPlayerIdx = 0;
 			for (int i = 0; i < numPlayerMoves; i++) {
+				boolean allChildrenFullyExploredForPlayerMove = true;
+				for(int j = 0; j < numOpponentMoves; j++){
+					if(!children.get(numOpponentMoves*i + j).isFullyExplored){
+						allChildrenFullyExploredForPlayerMove = false;
+						break;
+					}
+				}
+				if(allChildrenFullyExploredForPlayerMove){
+					continue;
+				}
 				// DebugLog.output("Calculating selection score for child "+i);
 				double playerScore = getPlayerSelectionScore(i);
 				// DebugLog.output("Selection score for child "+i+":"+score);
@@ -181,6 +248,9 @@ public class MCTSNode {
 			double bestOpponentScore = 0;
 			int bestOpponentIdx = 0;
 			for (int i = 0; i < numOpponentMoves; i++) {
+				if(children.get(numOpponentMoves*bestPlayerIdx + i).isFullyExplored){
+					continue;
+				}
 				// DebugLog.output("Calculating selection score for child "+i);
 				double opponentScore = getOpponentSelectionScore(i);
 				// DebugLog.output("Selection score for child "+i+":"+score);
