@@ -21,7 +21,7 @@ import org.ggp.dhtp.util.DebugLog;
 public class MCTSPlayer extends StateMachineGamer {
 	private static final double TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double BEST_MOVE_SELECTION_MARGIN = 0.05;
-	private static final double EXPLORATION_COEFFICIENT = 50.0;
+	private static final double EXPLORATION_COEFFICIENT = 120.0;
 	private MCTSNode currNode;
 
 	Player p;
