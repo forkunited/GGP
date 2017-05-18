@@ -289,7 +289,8 @@ public class MCTSNode {
 		}
 		//DebugLog.output("Mean is "+ utilMean);
 		//DebugLog.output("Setting exploration coef to "+ Math.max(Math.sqrt(utilVariance/(totalVisits-1)), 0));
-		this.explorationCoefficient = Math.min(Math.max(Math.sqrt(utilVariance/(totalVisits)), 40),150);
+		//TODO: uncomment following line to set exploration coefficient based on variance of utility
+		//this.explorationCoefficient = Math.min(Math.max(Math.sqrt(utilVariance/(totalVisits)), 40),150);
 
 		return bpr;
 	}
