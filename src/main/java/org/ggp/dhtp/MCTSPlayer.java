@@ -1,5 +1,7 @@
 package org.ggp.dhtp;
 
+import java.util.HashMap;
+
 import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
@@ -43,7 +45,7 @@ public class MCTSPlayer extends StateMachineGamer {
 		Role role = getRole();
 
 		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-		currNode = new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT);
+		currNode = new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT, new HashMap<MachineState, MCTSNode>());
 
 
 		try{
@@ -78,11 +80,11 @@ public class MCTSPlayer extends StateMachineGamer {
 
 			if(currNode == null){
 				DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-				currNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT);
+				currNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT, new HashMap<MachineState,MCTSNode>());
 			}
 
 			try{
-				while (System.currentTimeMillis() < mctsTimeout) {
+				while (System.currentTimeMillis() < mctsTimeout && !currNode.isFullyExplored()) {
 					currNode.performIteration(mctsTimeout);
 					numDepthCharges++;
 				}
