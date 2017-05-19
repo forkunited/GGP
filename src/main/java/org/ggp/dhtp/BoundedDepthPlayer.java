@@ -148,6 +148,7 @@ public class BoundedDepthPlayer extends StateMachineGamer {
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
 		Role role = getRole();
+		System.out.println(machine.findActions(role));
 		Move bestMove = null;
 		MoveContainer bestMoveResult = null;
 		Move randomMove = machine.getRandomMove(state, role);

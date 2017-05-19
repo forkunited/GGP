@@ -14,11 +14,9 @@ import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
-import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 
 /**
@@ -86,6 +84,7 @@ public abstract class StateMachineGamer extends Gamer
 		return currentState;
 	}
 
+
 	/**
 	 * Returns the role that this gamer is playing as in the game.
 	 */
@@ -102,6 +101,7 @@ public abstract class StateMachineGamer extends Gamer
 	{
 		return stateMachine;
 	}
+
 
     /**
      * Cleans up the role, currentState and stateMachine. This should only be
@@ -183,7 +183,6 @@ public abstract class StateMachineGamer extends Gamer
 			stateMachine = getInitialStateMachine();
 			stateMachine.initialize(getMatch().getGame().getRules());
 			currentState = stateMachine.getInitialState();
-
 			role = stateMachine.getRoleFromConstant(getRoleName());
 			getMatch().appendState(currentState.getContents());
 

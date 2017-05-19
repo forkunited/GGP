@@ -14,14 +14,14 @@ import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
+import org.ggp.base.util.statemachine.implementation.propnet.SamplePropNetStateMachine;
 import org.ggp.dhtp.mcts.MCTSNode;
 import org.ggp.dhtp.util.DebugLog;
 
 public class MCTSPlayer extends StateMachineGamer {
 	private static final double TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double BEST_MOVE_SELECTION_MARGIN = 0.05;
-	private static final double EXPLORATION_COEFFICIENT = 120.0;
+	private static final double EXPLORATION_COEFFICIENT = 50.0;
 	private MCTSNode currNode;
 
 	Player p;
@@ -32,7 +32,7 @@ public class MCTSPlayer extends StateMachineGamer {
 
 	@Override
 	public StateMachine getInitialStateMachine() {
-		return new CachedStateMachine(new ProverStateMachine());
+		return new CachedStateMachine(new SamplePropNetStateMachine());
 	}
 
 	@Override
@@ -40,7 +40,6 @@ public class MCTSPlayer extends StateMachineGamer {
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		long turnTimeout = (long)(TIMEOUT_SAFETY_MARGIN * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 		int numDepthCharges = 0;
-
 		StateMachine machine = getStateMachine();
 		Role role = getRole();
 
