@@ -2,6 +2,7 @@ package org.ggp.dhtp.mcts;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -17,7 +18,6 @@ public class MCTSNode {
 
 	List<Double> playerUtil, opponentUtil;
 	List<Integer> playerVisits, opponentVisits, combinedMoveVisits;
-	MCTSNode parent;
 	List<MCTSNode> children;
 	private MachineState state;
 	private StateMachine machine;
@@ -31,12 +31,19 @@ public class MCTSNode {
 	private boolean isTerminal;
 	private int terminalValue;
 	double explorationCoefficient;
+	private Map<MachineState,MCTSNode> cachedNodes;
+	private double utilMean;
+	private double utilVariance;
+	private boolean isFullyExplored;
+	private double fullyExploredValue;
+	private Move fullyExploredBestMove;
 
 	public MCTSNode(StateMachine machine, MachineState state, MCTSNode parent, Role player,
-			double explorationCoefficient) throws MoveDefinitionException, GoalDefinitionException {
+			double explorationCoefficient, Map<MachineState, MCTSNode> cachedNodes) throws MoveDefinitionException, GoalDefinitionException {
 		this.machine = machine;
 		this.state = state;
-		this.parent = parent;
+		//this.parents = new ArrayList<MCTSNode>();
+		//this.parents.add(parent);
 		this.playerUtil = null;
 		this.playerVisits = null;
 		this.opponentUtil = null;
@@ -44,11 +51,12 @@ public class MCTSNode {
 		this.player = player;
 		this.totalVisits = 0;
 		this.explorationCoefficient = explorationCoefficient;
-
-
+		this.cachedNodes = cachedNodes;
 		if (machine.isTerminal(state)) {
 			this.isTerminal = true;
 			this.terminalValue = machine.getGoal(state, player);
+			this.isFullyExplored = true;
+			this.fullyExploredValue = terminalValue;
 		} else {
 			this.playerRoleIdx = machine.getRoleIndices().get(player);
 			this.playerMoves = machine.getLegalMoves(state, player);
@@ -77,14 +85,20 @@ public class MCTSNode {
 			}
 
 			this.children = new ArrayList<MCTSNode>();
+			this.isFullyExplored = false;
+			this.fullyExploredValue = 0;
 		}
+	}
+
+	public boolean isFullyExplored(){
+		return this.isFullyExplored;
 	}
 
 	private double getPlayerSelectionScore(int playerMoveIdx) {
 
 		double playerUtility = playerUtil.get(playerMoveIdx);
 		int numPlayerVisits = playerVisits.get(playerMoveIdx);
-
+		//DebugLog.output("Exploration coefficient is " + explorationCoefficient);
 		return playerUtility / numPlayerVisits
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numPlayerVisits);
 	}
@@ -99,6 +113,10 @@ public class MCTSNode {
 	}
 
 	public Move getBestMove(long turnTimeout) throws PhaseTimeoutException {
+		if(isFullyExplored){
+			DebugLog.output("Fully explored -- returning best move");
+			return fullyExploredBestMove;
+		}
 		Move bestMove = null;
 		double bestUtility = 0;
 		for (int i = 0; i < numPlayerMoves; i++) {
@@ -112,6 +130,44 @@ public class MCTSNode {
 
 		}
 		return bestMove;
+	}
+
+	private boolean fullyExploreNode(){
+		if(isFullyExplored){
+			return true;
+		}
+		if(children.size() != numPlayerMoves * numOpponentMoves){
+			return false;
+		}
+		for(MCTSNode child : children){
+			if(!child.isFullyExplored){
+				return false;
+			}
+		}
+		DebugLog.output("All children fully explored -- collapsing state!");
+		double minimaxScore = 0;
+		Move minimaxMove = null;
+		for (int i = 0; i < numPlayerMoves; i++){
+			double minScore = 0;
+			boolean foundMinScore = false;
+			for (int j = 0; j < numOpponentMoves; j++) {
+				// do minimax here
+				int childIdx = i*numOpponentMoves+j;
+				double childFullyExploredVal = children.get(childIdx).fullyExploredValue;
+				if(!foundMinScore || childFullyExploredVal < minScore){
+					minScore = childFullyExploredVal;
+					foundMinScore = true;
+				}
+			}
+			if(minScore > minimaxScore || minimaxMove == null){
+				minimaxScore = minScore;
+				minimaxMove = playerMoves.get(i);
+			}
+		}
+		this.isFullyExplored = true;
+		this.fullyExploredValue = minimaxScore;
+		this.fullyExploredBestMove = minimaxMove;
+		return true;
 	}
 
 	private int getPlayerIdxFromChildIdx(int childIdx) {
@@ -131,16 +187,18 @@ public class MCTSNode {
 		Move playerMove = playerMoves.get(playerMoveIdx);
 		jointMoves.set(playerRoleIdx, playerMove);
 		MachineState newState = machine.getNextState(state, jointMoves);
-		MCTSNode newChild = new MCTSNode(machine, newState, this, player, this.explorationCoefficient);
-		children.add(newChild);
 
-		// simulate
-		MachineState mcState = newState;
-		while (!machine.isTerminal(mcState)) {
-			// TODO: add timeout
-			mcState = machine.getRandomNextState(mcState);
+		if(cachedNodes.containsKey(newState)){
+			MCTSNode newChild = cachedNodes.get(newState);
+			children.add(newChild);
+		} else {
+			MCTSNode newChild = new MCTSNode(machine, newState, this, player, this.explorationCoefficient, cachedNodes);
+			children.add(newChild);
+			cachedNodes.put(newState, newChild);
 		}
 
+		// simulate
+		MachineState mcState = machine.performDepthCharge(newState, new int[1]);
 		return machine.getGoal(mcState, player);
 	}
 
@@ -150,6 +208,10 @@ public class MCTSNode {
 
 		if (isTerminal) {
 			return terminalValue;
+		}
+
+		if(fullyExploreNode()){
+			return fullyExploredValue;
 		}
 
 		double bpr;
@@ -164,6 +226,16 @@ public class MCTSNode {
 			double bestPlayerScore = 0;
 			int bestPlayerIdx = 0;
 			for (int i = 0; i < numPlayerMoves; i++) {
+				boolean allChildrenFullyExploredForPlayerMove = true;
+				for(int j = 0; j < numOpponentMoves; j++){
+					if(!children.get(numOpponentMoves*i + j).isFullyExplored){
+						allChildrenFullyExploredForPlayerMove = false;
+						break;
+					}
+				}
+				if(allChildrenFullyExploredForPlayerMove){
+					continue;
+				}
 				// DebugLog.output("Calculating selection score for child "+i);
 				double playerScore = getPlayerSelectionScore(i);
 				// DebugLog.output("Selection score for child "+i+":"+score);
@@ -176,6 +248,9 @@ public class MCTSNode {
 			double bestOpponentScore = 0;
 			int bestOpponentIdx = 0;
 			for (int i = 0; i < numOpponentMoves; i++) {
+				if(children.get(numOpponentMoves*bestPlayerIdx + i).isFullyExplored){
+					continue;
+				}
 				// DebugLog.output("Calculating selection score for child "+i);
 				double opponentScore = getOpponentSelectionScore(i);
 				// DebugLog.output("Selection score for child "+i+":"+score);
@@ -200,6 +275,23 @@ public class MCTSNode {
 		this.combinedMoveVisits.set(selectedIdx, this.combinedMoveVisits.get(selectedIdx) + 1);
 		this.totalVisits += 1;
 
+			//refer to https://math.stackexchange.com/questions/20593/calculate-variance-from-a-stream-of-sample-values/116344#116344
+		if(totalVisits == 1){
+			utilMean =  bpr;
+			utilVariance = 0;
+		} else {
+			double m_k_1 = utilMean;
+			double m_k = m_k_1 + (bpr - m_k_1)/totalVisits;
+			double v_k_1 = utilVariance;
+			double v_k = v_k_1 + (bpr - m_k_1)*(bpr - m_k);
+			utilMean = m_k;
+			utilVariance = v_k;
+		}
+		//DebugLog.output("Mean is "+ utilMean);
+		//DebugLog.output("Setting exploration coef to "+ Math.max(Math.sqrt(utilVariance/(totalVisits-1)), 0));
+		//TODO: uncomment following line to set exploration coefficient based on variance of utility
+		//this.explorationCoefficient = Math.min(Math.max(Math.sqrt(utilVariance/(totalVisits)), 40),150);
+
 		return bpr;
 	}
 
@@ -211,7 +303,6 @@ public class MCTSNode {
 		// TODO Auto-generated method stub
 		for (MCTSNode child : children) {
 			if (child.state.equals(newState)) {
-				child.parent = null;
 				return child;
 			}
 		}
