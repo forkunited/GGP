@@ -2,7 +2,6 @@ package org.ggp.dhtp.propnet;
 
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -22,11 +21,8 @@ public class PropNetBackPropUtils {
 	public static void markBases(MachineState state, PropNet propNet) {
 
 		/* Remove sentences to only include base */
-		Set<GdlSentence> baseSentences = state.clone().getContents(); /* Can probably optimize this clone */
-		for (Iterator<GdlSentence> i = baseSentences.iterator(); i.hasNext();) {
-			GdlSentence sentence = i.next();
-			assert("true".equals(sentence.getName()));
-		}
+		Set<GdlSentence> baseSentences = state.getContents(); /* Can probably optimize this clone */
+
 		/* Set propnet base values to match state */
 		for (Proposition p : propNet.getBasePropositions().values()) {
 			if (baseSentences.contains(p.getName())) {
