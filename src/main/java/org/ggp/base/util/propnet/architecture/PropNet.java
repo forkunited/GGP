@@ -5,8 +5,10 @@ import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.GdlConstant;
@@ -548,5 +550,35 @@ public final class PropNet
 		//These are actually unnecessary...
 		//c.removeAllInputs();
 		//c.removeAllOutputs();
+	}
+
+	public PropNet clone(Set<Component> filter) {
+		Set<Component> cloneComponents = new HashSet<Component>();
+		Map<Component, Component> oldToNew = new HashMap<Component, Component>();
+		Queue<Component> danglingComponents = new LinkedList<Component>();
+		for (Component component : this.components) {
+			if (!filter.contains(component))
+				continue;
+			Component cloneComponent = component.clone(filter, oldToNew);
+
+			if (cloneComponent.isDangling())
+				danglingComponents.add(cloneComponent);
+
+			cloneComponents.add(cloneComponent);
+		}
+
+		// Remove dangling components
+		while (!danglingComponents.isEmpty()) {
+			Component next = danglingComponents.remove();
+			cloneComponents.remove(next);
+			for (Component output : next.getOutputs()) {
+				output.getInputs().remove(next);
+				if (output.isDangling()) {
+					danglingComponents.add(output);
+				}
+			}
+		}
+
+		return new PropNet(this.roles, cloneComponents);
 	}
 }

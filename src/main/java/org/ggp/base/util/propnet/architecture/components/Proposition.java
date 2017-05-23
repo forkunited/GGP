@@ -1,5 +1,8 @@
 package org.ggp.base.util.propnet.architecture.components;
 
+import java.util.Map;
+import java.util.Set;
+
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 
@@ -78,5 +81,12 @@ public class Proposition extends Component
 	public String toString()
 	{
 		return toDot("circle", value ? "red" : "white", name.toString());
+	}
+
+	@Override
+	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
+		Proposition prop = new Proposition(this.name);
+		prop.value = this.value;
+		return prop;
 	}
 }

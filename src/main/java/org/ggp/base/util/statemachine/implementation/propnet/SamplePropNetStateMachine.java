@@ -45,12 +45,16 @@ public class SamplePropNetStateMachine extends StateMachine {
     public void initialize(List<Gdl> description) {
     	//System.out.println("Initializing");
         try {
-            propNet = OptimizingPropNetFactory.create(description);
-            roles = propNet.getRoles();
-            ordering = getOrdering();
+            initialize(OptimizingPropNetFactory.create(description));
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void initialize(PropNet propNet) {
+        this.propNet = propNet;
+        this.roles = propNet.getRoles();
+        this.ordering = getOrdering();
     }
 
     /**
@@ -319,5 +323,9 @@ public class SamplePropNetStateMachine extends StateMachine {
 
         }
         return new MachineState(contents);
+    }
+
+    public PropNet getPropNet() {
+    	return this.propNet;
     }
 }

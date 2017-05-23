@@ -2,7 +2,14 @@ package org.ggp.base.util.propnet.architecture;
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+
+import org.ggp.base.util.gdl.grammar.GdlConstant;
+import org.ggp.base.util.gdl.grammar.GdlProposition;
+import org.ggp.base.util.gdl.grammar.GdlRelation;
+import org.ggp.base.util.propnet.architecture.components.Constant;
+import org.ggp.base.util.propnet.architecture.components.Proposition;
 
 /**
  * The root class of the Component hierarchy, which is designed to represent
@@ -153,4 +160,70 @@ public abstract class Component implements Serializable
         return sb.toString();
     }
 
+    public Component clone(Set<Component> filter, Map<Component, Component> oldToNew) {
+    	if (oldToNew.containsKey(this))
+    		return oldToNew.get(this);
+
+    	Component cloneInstance = cloneHelper(filter, oldToNew);
+    	oldToNew.put(this, cloneInstance);
+
+    	for (Component input : this.inputs) {
+    		if (!filter.contains(input))
+    			continue;
+    		Component cloneInput = null;
+    		if (oldToNew.containsKey(input))
+    			cloneInput = oldToNew.get(input);
+    		else
+    			cloneInput = input.clone(filter, oldToNew);
+
+    		cloneInstance.addInput(cloneInput);
+    	}
+
+    	for (Component output : this.outputs) {
+    		if (!filter.contains(output))
+    			continue;
+    		Component cloneOutput = null;
+    		if (oldToNew.containsKey(output))
+    			cloneOutput = oldToNew.get(output);
+    		else
+    			cloneOutput = output.clone(filter, oldToNew);
+
+    		cloneInstance.addOutput(cloneOutput);
+    	}
+
+    	return cloneInstance;
+    }
+
+    public boolean isInput() {
+		if (!(this instanceof Proposition))
+			return false;
+
+		Proposition proposition = (Proposition)this;
+
+	    // Skip all propositions that aren't GdlFunctions.
+		if (!(proposition.getName() instanceof GdlRelation))
+		    return false;
+
+		GdlRelation relation = (GdlRelation) proposition.getName();
+		return relation.getName().getValue().equals("does");
+	}
+
+	public boolean isInit() {
+		if (!(this instanceof Proposition))
+			return false;
+
+		Proposition proposition = (Proposition)this;
+
+		if (!(proposition.getName() instanceof GdlProposition))
+		   return false;
+
+		GdlConstant constant = ((GdlProposition) proposition.getName()).getName();
+		return constant.getValue().toUpperCase().equals("INIT");
+	}
+
+	public boolean isDangling() {
+		return getInputs().size() == 0 && !isInput() && !isInit() && !(this instanceof Constant);
+	}
+
+    public abstract Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew);
 }

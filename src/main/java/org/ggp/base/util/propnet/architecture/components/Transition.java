@@ -1,5 +1,8 @@
 package org.ggp.base.util.propnet.architecture.components;
 
+import java.util.Map;
+import java.util.Set;
+
 import org.ggp.base.util.propnet.architecture.Component;
 
 /**
@@ -26,5 +29,10 @@ public final class Transition extends Component
 	public String toString()
 	{
 		return toDot("box", "grey", "TRANSITION");
+	}
+
+	@Override
+	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
+		return new Transition();
 	}
 }
