@@ -204,7 +204,9 @@ public class MCTSNode {
 		}
 
 		// simulate
+		//DebugLog.output("Performing depth charge");
 		MachineState mcState = machine.performDepthCharge(newState, new int[1]);
+		//DebugLog.output("Depth charge complete");
 		return machine.getGoal(mcState, player);
 	}
 

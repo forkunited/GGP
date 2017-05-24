@@ -50,24 +50,39 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		//this.propNetMachine.getPropNet().renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output.dot");
 
-		this.factoredMachines = new ArrayList<CachedStateMachine>();
-		this.currNodes = new ArrayList<MCTSNode>();
+		DebugLog.output("Start Metagame");
 
-		PropNetAnalyzer analyzer = new PropNetAnalyzer();
-		PropNet reachablePropNet = analyzer.factorTerminalGoalReachable(this.propNetMachine.getPropNet());
-		List<PropNet> propNets = analyzer.factorDisjunctive(reachablePropNet);
+			this.factoredMachines = new ArrayList<CachedStateMachine>();
+			this.currNodes = new ArrayList<MCTSNode>();
+		if (this.getStateMachine().getRoleIndices().size() == 1) {
+			DebugLog.output("Propnet Analyzer Start");
+			PropNetAnalyzer analyzer = new PropNetAnalyzer();
+			DebugLog.output("Propnet Analyzer factor terminal goal reachable");
+			PropNet reachablePropNet = analyzer.factorTerminalGoalReachable(this.propNetMachine.getPropNet());
+			DebugLog.output("Propnet Analyzer factor disjunctive");
+			List<PropNet> propNets = analyzer.factorDisjunctive(reachablePropNet);
 
-		for (int i = 0; i < propNets.size(); i++) {
-			PropNet propNet = propNets.get(i);
-			SamplePropNetStateMachine factoredMachine = new SamplePropNetStateMachine();
-			factoredMachine.initialize(propNet);  // This "initialize" thing is annoying.  But simplest given existing codebase
-			this.factoredMachines.add(new CachedStateMachine(factoredMachine));
-			//propNet.renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output" + i + ".dot");
+			for (int i = 0; i < propNets.size(); i++) {
+				PropNet propNet = propNets.get(i);
+				SamplePropNetStateMachine factoredMachine = new SamplePropNetStateMachine();
+				factoredMachine.initialize(propNet); // This "initialize" thing
+														// is annoying. But
+														// simplest given
+														// existing codebase
+				this.factoredMachines.add(new CachedStateMachine(factoredMachine));
+				// propNet.renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output"
+				// + i + ".dot");
+			}
+
+			DebugLog.output("Reduced propnet from " + this.propNetMachine.getPropNet().getComponents().size() + " to "
+					+ reachablePropNet.getComponents().size());
+			DebugLog.output("Factored into " + this.factoredMachines.size() + " propnets");
+		} else {
+			//SamplePropNetStateMachine singleMachine = new SamplePropNetStateMachine();
+			//PropNet propNet = this.propNetMachine.getPropNet();
+			//singleMachine.initialize(propNet);
+			this.factoredMachines.add(new CachedStateMachine(this.propNetMachine));
 		}
-
-		DebugLog.output("Reduced propnet from " + this.propNetMachine.getPropNet().getComponents().size() + " to " + reachablePropNet.getComponents().size());
-		DebugLog.output("Factored into " + this.factoredMachines.size() + " propnets");
-
 		long turnTimeout = (long)(TIMEOUT_SAFETY_MARGIN * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 		int numDepthCharges = 0;
 		Role role = getRole();
@@ -95,6 +110,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 
+		DebugLog.output("Start select move");
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
 		Role role = getRole();
