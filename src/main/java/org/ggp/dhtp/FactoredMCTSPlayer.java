@@ -58,7 +58,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				+ System.currentTimeMillis();
 		this.factoredMachines = new ArrayList<CachedStateMachine>();
 		this.currNodes = new ArrayList<MCTSNode>();
-		if (true || this.getStateMachine().getRoleIndices().size() == 1) {
+		if (this.getStateMachine().getRoleIndices().size() == 1) {
 			try {
 				DebugLog.output("Propnet Analyzer Start");
 				PropNetAnalyzer analyzer = new PropNetAnalyzer();
