@@ -1,7 +1,7 @@
 package org.ggp.dhtp.propnet;
 
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -58,7 +58,7 @@ public class PropNetForwardPropUtils {
 		HashSet<Proposition> input = new HashSet<Proposition>(propNet.getInputPropositions().values());
 		Proposition init = propNet.getInitProposition();
 
-		ArrayList<Component> toProcess = new ArrayList<Component>();
+		LinkedList<Component> toProcess = new LinkedList<Component>();
 		// toProcess.addAll((Collection<? extends Component>) base);
 		// toProcess.addAll((Collection<? extends Component>) input);
 		toProcess.add(init);
@@ -70,13 +70,12 @@ public class PropNetForwardPropUtils {
 		// toProcess.addAll(propNet.getComponents());
 
 		while (!toProcess.isEmpty()) {
-			Component prop = toProcess.remove(0);
+			Component prop = toProcess.poll();
 
 			boolean newState = propGetPInternal(prop, base, input, init);
 			if (!prop.initialized || prop.state != newState) {
 				prop.state = newState;
 				for (Component c : prop.getOutputs()) {
-
 					int delta = prop.state == true ? 1 : -1;
 					if (c instanceof And) {
 

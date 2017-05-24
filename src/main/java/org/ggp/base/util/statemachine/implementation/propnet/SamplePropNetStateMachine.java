@@ -140,12 +140,12 @@ public class SamplePropNetStateMachine extends StateMachine {
     			}
     		}
     	}
-    	//System.out.println("Constructing moves from legals");
-    	//System.out.println(legalProps);
+    	System.out.println("Constructing moves from legals");
+    	System.out.println(legalProps);
     	ArrayList<Move> moves = new ArrayList<Move>();
-    	//System.out.println(moves);
+    	System.out.println(moves);
     	for (Proposition p: legalProps) {
-    		//System.out.println(p.toString());
+    		System.out.println(p.toString());
     		moves.add(getMoveFromProposition(p));
     	}
     	return moves;
