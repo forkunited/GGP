@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.ggp.base.util.Pair;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -113,12 +114,16 @@ public class MCTSNode {
 	}
 
 	public Move getBestMove(long turnTimeout) throws PhaseTimeoutException {
+		return getBestMoveAndUtility(turnTimeout).left;
+	}
+
+	public Pair<Move, Double> getBestMoveAndUtility(long turnTimeout) throws PhaseTimeoutException {
 		if(isFullyExplored){
-			DebugLog.output("Fully explored -- returning best move");
-			return fullyExploredBestMove;
+			DebugLog.output("Fully explored -- returning best move (" + fullyExploredBestMove + " " + fullyExploredValue + ")");
+			return Pair.of(fullyExploredBestMove, fullyExploredValue);
 		}
 		Move bestMove = null;
-		double bestUtility = 0;
+		double bestUtility = 0.0;
 		for (int i = 0; i < numPlayerMoves; i++) {
 			PhaseTimeoutException.checkTimeout(turnTimeout);
 			double averageUtility = playerVisits.get(i) == 0 ? 0 : playerUtil.get(i) / playerVisits.get(i);
@@ -129,7 +134,8 @@ public class MCTSNode {
 			}
 
 		}
-		return bestMove;
+
+		return Pair.of(bestMove, bestUtility);
 	}
 
 	private boolean fullyExploreNode(){
@@ -198,7 +204,9 @@ public class MCTSNode {
 		}
 
 		// simulate
+		//DebugLog.output("Performing depth charge");
 		MachineState mcState = machine.performDepthCharge(newState, new int[1]);
+		//DebugLog.output("Depth charge complete");
 		return machine.getGoal(mcState, player);
 	}
 

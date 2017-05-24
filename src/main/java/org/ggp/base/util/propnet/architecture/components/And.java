@@ -1,5 +1,8 @@
 package org.ggp.base.util.propnet.architecture.components;
 
+import java.util.Map;
+import java.util.Set;
+
 import org.ggp.base.util.propnet.architecture.Component;
 
 /**
@@ -35,4 +38,8 @@ public final class And extends Component
 		return toDot("invhouse", "grey", "AND");
 	}
 
+	@Override
+	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
+		return new And();
+	}
 }
