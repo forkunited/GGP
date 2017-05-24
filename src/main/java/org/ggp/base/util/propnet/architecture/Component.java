@@ -27,6 +27,9 @@ public abstract class Component implements Serializable
     private final Set<Component> outputs;
     public boolean state = false;
     public boolean initialized = false;
+    public boolean isBase = false;
+    public boolean isInput = false;
+    public boolean inQueue = false;
 
     /**
      * Creates a new Component with no inputs or outputs.

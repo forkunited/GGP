@@ -19,6 +19,7 @@ import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.logging.GamerLogger;
 import org.ggp.base.util.propnet.architecture.components.And;
+import org.ggp.base.util.propnet.architecture.components.Constant;
 import org.ggp.base.util.propnet.architecture.components.Not;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
@@ -100,6 +101,12 @@ public final class PropNet
 	/** A helper list of all of the roles. */
 	private final List<Role> roles;
 
+	private final Set<Component> constantComponents;
+	private final Set<Component> transitionComponents;
+
+	private Set<Component> baseComponentSet;
+	private Set<Component> inputComponentSet;
+
 	public void addComponent(Component c)
 	{
 		components.add(c);
@@ -126,6 +133,42 @@ public final class PropNet
 		this.initProposition = recordInitProposition();
 		this.terminalProposition = recordTerminalProposition();
 		this.legalInputMap = makeLegalInputMap();
+		this.transitionComponents = recordTransitionComponents();
+		this.constantComponents = recordConstantComponents();
+		this.baseComponentSet = recordBaseComponentSet();
+		this.inputComponentSet = recordInputComponentSet();
+	}
+
+	private Set<Component> recordBaseComponentSet() {
+
+		return new HashSet<Component>(this.getBasePropositions().values());
+
+	}
+
+	private Set<Component> recordInputComponentSet() {
+
+		return new HashSet<Component>(this.getInputPropositions().values());
+
+	}
+
+	private Set<Component> recordConstantComponents() {
+		HashSet<Component> cset = new HashSet<Component>();
+		for(Component c : components){
+			if(c instanceof Constant){
+				cset.add(c);
+			}
+		}
+		return cset;
+	}
+
+	private Set<Component> recordTransitionComponents() {
+		HashSet<Component> cset = new HashSet<Component>();
+		for(Component c : components){
+			if(c instanceof Transition){
+				cset.add(c);
+			}
+		}
+		return cset;
 	}
 
 	public List<Role> getRoles()
@@ -245,6 +288,26 @@ public final class PropNet
 		return terminalProposition;
 	}
 
+	public Set<Component> getConstantComponents()
+	{
+		return constantComponents;
+	}
+
+
+	public Set<Component> getTransitionComponents()
+	{
+		return transitionComponents;
+	}
+
+	public Set<Component> getBaseComponentSet(){
+		return baseComponentSet;
+	}
+
+	public Set<Component> getInputComponentSet(){
+		return inputComponentSet;
+	}
+
+
 	/**
 	 * Returns a representation of the PropNet in .dot format.
 	 *
@@ -304,6 +367,7 @@ public final class PropNet
 			Component component = proposition.getSingleInput();
 			if (component instanceof Transition) {
 				basePropositions.put(proposition.getName(), proposition);
+				proposition.isBase = true;
 			}
 		}
 
@@ -381,6 +445,7 @@ public final class PropNet
 			GdlRelation relation = (GdlRelation) proposition.getName();
 			if (relation.getName().getValue().equals("does")) {
 				inputPropositions.put(proposition.getName(), proposition);
+				proposition.isInput = true;
 			}
 		}
 

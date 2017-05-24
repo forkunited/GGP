@@ -40,8 +40,8 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	private static final double FACTOR_SAFETY_MARGIN = 0.25;
 	private static final double MCTS_SAFETY_MARGIN = 0.50;
 	private static final double BEST_MOVE_SELECTION_MARGIN = 0.10;
-	private static final double EXPLORATION_COEFFICIENT = 50.0;
-	private static final double DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF = 2.0;
+	private static final double EXPLORATION_COEFFICIENT = 80.0;
+	private static final double DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF = 0.0;
 
 	private SamplePropNetStateMachine propNetMachine;
 
@@ -104,8 +104,8 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		// hl.add(new HeuristicOpponentFreedom(getStateMachine(),
 		// HeuristicFreedom.Type.FOCUS));
 
-		weights.add(0.80);
-		weights.add(0.10);
+		weights.add(0.60);
+		weights.add(0.30);
 		// weights.add(0.10);
 		weights.add(0.10);
 		// weights.add(0.10);
@@ -405,9 +405,8 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 			}
 
 			long depthChargeStart = System.currentTimeMillis();
-
+			boolean allFullyExplored = false;
 			try {
-				boolean allFullyExplored = false;
 				while (System.currentTimeMillis() < mctsTimeout && !allFullyExplored) {
 					allFullyExplored = true;
 					for (MCTSNode currNode : this.currNodes) {
@@ -423,9 +422,9 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				DebugLog.output("Picking best move");
 				double dcps = (1000.0*(double) numDepthCharges) / (Math.max(System.currentTimeMillis() - depthChargeStart, 100.0));
 				DebugLog.output("Turn DCPS:" + dcps);
-				if (1000.0*((double) numDepthCharges) / turnTime < DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF) {
+				if (!allFullyExplored && dcps < DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF) {
 					DebugLog.output("DCPS too low - will run iter deepening next time");
-					if (runHeur) {
+					if (heurMove != null) {
 						DebugLog.output("Picking heuristic move");
 						bestMove = heurMove;
 					}
@@ -451,6 +450,10 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				DebugLog.output("Picking Random Move");
 				bestMove = randomMove;
 			}
+		}
+		if (bestMove == null) {
+			DebugLog.output("Picking Random Move");
+			bestMove = randomMove;
 		}
 		DebugLog.output("Picked move "+bestMove.toString());
 		return bestMove;

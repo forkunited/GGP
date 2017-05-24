@@ -1,7 +1,6 @@
 package org.ggp.dhtp.propnet;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -18,32 +17,47 @@ import org.ggp.base.util.statemachine.MachineState;
 
 public class PropNetForwardPropUtils {
 	/* Update the assignment of a propnet given the new state */
-	public static void markBases(MachineState state, PropNet propNet) {
+	public static boolean markBases(MachineState state, PropNet propNet) {
 
 		/* Remove sentences to only include base */
 		Set<GdlSentence> baseSentences = state
 				.getContents(); /* Can probably optimize this clone */
 
 		/* Set propnet base values to match state */
+		boolean modified = false;
 		for (Proposition p : propNet.getBasePropositions().values()) {
 			if (baseSentences.contains(p.getName())) {
-				p.setValue(true);
+				if(p.state == false){
+					p.setValue(true);
+					modified = true;
+				}
 			} else {
-				p.setValue(false);
+				if(p.state == true){
+					p.setValue(false);
+					modified = true;
+				}
 			}
 		}
+		return modified;
 	}
 
 	/* Update the assignment of a propnet given the new moves */
-	public static void markActions(List<GdlSentence> doeses, PropNet propNet) {
-
+	public static boolean markActions(List<GdlSentence> doeses, PropNet propNet) {
+		boolean modified = false;
 		for (Proposition p : propNet.getInputPropositions().values()) {
 			if (doeses.contains(p.getName())) {
-				p.setValue(true);
+				if(p.state == false){
+					p.setValue(true);
+					modified = true;
+				}
 			} else {
-				p.setValue(false);
+				if(p.state == true){
+					p.setValue(false);
+					modified = true;
+				}
 			}
 		}
+		return modified;
 	}
 
 	/* Read the assignment of a proposition */
@@ -54,29 +68,22 @@ public class PropNetForwardPropUtils {
 
 	public static void forwardProp(PropNet propNet) {
 		// System.out.println("Start forward prop");
-		HashSet<Proposition> base = new HashSet<Proposition>(propNet.getBasePropositions().values());
-		HashSet<Proposition> input = new HashSet<Proposition>(propNet.getInputPropositions().values());
 		Proposition init = propNet.getInitProposition();
 
-		ArrayList<Component> toProcess = new ArrayList<Component>();
-		// toProcess.addAll((Collection<? extends Component>) base);
-		// toProcess.addAll((Collection<? extends Component>) input);
+		LinkedList<Component> toProcess = new LinkedList<Component>();
+		toProcess.addAll(propNet.getInputComponentSet());
+		toProcess.addAll(propNet.getBaseComponentSet());
 		toProcess.add(init);
-		for (Component c : propNet.getComponents()) {
-			if (base.contains(c) || input.contains(c) || c instanceof Constant || c instanceof Transition) {
-				toProcess.add(c);
-			}
-		}
-		// toProcess.addAll(propNet.getComponents());
+		toProcess.addAll(propNet.getConstantComponents());
+		toProcess.addAll(propNet.getTransitionComponents());
 
 		while (!toProcess.isEmpty()) {
-			Component prop = toProcess.remove(0);
-
-			boolean newState = propGetPInternal(prop, base, input, init);
+			Component prop = toProcess.poll();
+			prop.inQueue = false;
+			boolean newState = propGetPInternal(prop, init);
 			if (!prop.initialized || prop.state != newState) {
 				prop.state = newState;
 				for (Component c : prop.getOutputs()) {
-
 					int delta = prop.state == true ? 1 : -1;
 					if (c instanceof And) {
 
@@ -105,22 +112,24 @@ public class PropNetForwardPropUtils {
 						}
 					}
 					// System.out.println("Adding to processing queue");
-					toProcess.add(c);
+					if(!c.inQueue){
+						toProcess.add(c);
+						c.inQueue = true;
+					}
 				}
 				prop.initialized = true;
 			}
 		}
 	}
 
-	private static boolean propGetPInternal(Component prop, Set<Proposition> Base, Set<Proposition> Input,
-			Proposition Init) {
-		if (Base.contains(prop)) {
+	private static boolean propGetPInternal(Component prop, Proposition Init) {
+		if (prop.isBase) {
 			// if(prop.getValue()){
 			// System.out.println("Base prop: ");
 			// System.out.println(prop.getValue() + prop.toString());
 			// }
 			return prop.getValue();
-		} else if (Input.contains(prop)) {
+		} else if (prop.isInput) {
 			// System.out.println("Input prop: ");
 			// System.out.println(prop.toString());
 			return prop.getValue();
