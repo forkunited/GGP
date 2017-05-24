@@ -25,7 +25,8 @@ public class PropNetForwardPropUtils {
 
 		/* Set propnet base values to match state */
 		boolean modified = false;
-		for (Proposition p : propNet.getBasePropositions().values()) {
+		for (Component c : propNet.getBaseComponentSet()) {
+			Proposition p = (Proposition) c;
 			if (baseSentences.contains(p.getName())) {
 				if(p.state == false){
 					p.setValue(true);
@@ -44,7 +45,8 @@ public class PropNetForwardPropUtils {
 	/* Update the assignment of a propnet given the new moves */
 	public static boolean markActions(List<GdlSentence> doeses, PropNet propNet) {
 		boolean modified = false;
-		for (Proposition p : propNet.getInputPropositions().values()) {
+		for (Component c : propNet.getInputComponentSet()) {
+			Proposition p = (Proposition)c;
 			if (doeses.contains(p.getName())) {
 				if(p.state == false){
 					p.setValue(true);

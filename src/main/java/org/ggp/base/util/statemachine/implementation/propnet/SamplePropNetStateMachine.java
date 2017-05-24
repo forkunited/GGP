@@ -212,7 +212,8 @@ public class SamplePropNetStateMachine extends StateMachine {
     	}
     	Map<Proposition, Boolean> baseVals = new HashMap<Proposition, Boolean>();
     	/* Record bases */
-    	for (Proposition baseProp : propNet.getBasePropositions().values()) {
+    	for (Component c : propNet.getBaseComponentSet()) {
+    		Proposition baseProp = (Proposition) c;
     		if (PropNetForwardPropUtils.propMarkP(baseProp.getSingleInput().getSingleInput(), propNet)) {
     			baseVals.put(baseProp, true);
     		} else {
@@ -221,7 +222,8 @@ public class SamplePropNetStateMachine extends StateMachine {
         }
 
     	/* Update bases */
-    	for (Proposition baseProp : propNet.getBasePropositions().values()) {
+    	for (Component c : propNet.getBaseComponentSet()) {
+    		Proposition baseProp = (Proposition)c;
     		baseProp.setValue(baseVals.get(baseProp));
     	}
     	PropNetForwardPropUtils.forwardProp(propNet);
@@ -320,8 +322,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     public MachineState getStateFromBaseSimple()
     {
         Set<GdlSentence> contents = new HashSet<GdlSentence>();
-        for (Proposition p : propNet.getBasePropositions().values())
+        for (Component c : propNet.getBaseComponentSet())
         {
+        	Proposition p = (Proposition)c;
             if (p.getValue())
             {
                 contents.add(p.getName());
