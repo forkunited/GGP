@@ -12,6 +12,7 @@ import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
+import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class PropNetAnalyzer {
 
@@ -60,12 +61,13 @@ public class PropNetAnalyzer {
 		return subnet;
 	}
 
-	protected Set<Component> getReachableSubnet(PropNet propNet, Set<Component> starts) {
+	protected Set<Component> getReachableSubnet(PropNet propNet, Set<Component> starts, long factorTimeout) throws PhaseTimeoutException {
 		Queue<Component> toVisit = new LinkedList<Component>();
 		Set<Component> subnet = new HashSet<Component>();
 		toVisit.addAll(starts);
 
 		while (!toVisit.isEmpty()) {
+			PhaseTimeoutException.checkTimeout(factorTimeout);
 			Component cur = toVisit.remove();
 			subnet.add(cur);
 
@@ -104,15 +106,15 @@ public class PropNetAnalyzer {
 		return legals;
 	}
 
-	public PropNet factorTerminalGoalReachable(PropNet propNet) {
+	public PropNet factorTerminalGoalReachable(PropNet propNet, long factorTimeout) throws PhaseTimeoutException {
 		Proposition terminal = propNet.getTerminalProposition();
 		Set<Proposition> goals = getGoals(propNet);
 		Set<Component> termGoals = new HashSet<Component>();
 		termGoals.add(terminal);
 		termGoals.addAll(goals);
 
-		Set<Component> termGoalComponents = getReachableSubnet(propNet, termGoals);
-		termGoalComponents.addAll(getReachableSubnet(propNet, getLegals(propNet)));
+		Set<Component> termGoalComponents = getReachableSubnet(propNet, termGoals, factorTimeout);
+		termGoalComponents.addAll(getReachableSubnet(propNet, getLegals(propNet), factorTimeout));
 
 		return propNet.clone(termGoalComponents);
 	}
@@ -149,22 +151,25 @@ public class PropNetAnalyzer {
 		return false;
 	}
 
-	public List<PropNet> factorDisjunctive(PropNet propNet) {
+	public List<PropNet> factorDisjunctive(PropNet propNet, long factorTimeout) throws PhaseTimeoutException {
 		List<PropNet> propNets = new ArrayList<PropNet>();
 		if (!(propNet.getTerminalProposition().getSingleInput() instanceof Or)) {
 			propNets.add(propNet);
 			return propNets;
 		}
 
-		Set<Component> legalSubnet = getReachableSubnet(propNet, getLegals(propNet));
+		Set<Component> legalSubnet = getReachableSubnet(propNet, getLegals(propNet), factorTimeout);
 		Set<Component> disjuncts = new HashSet<Component>(propNet.getTerminalProposition().getSingleInput().getInputs());
 		Set<Component> toRemove = new HashSet<Component>();
-		for (Component disjunct : disjuncts)
+		for (Component disjunct : disjuncts) {
+			PhaseTimeoutException.checkTimeout(factorTimeout);
 			if (!disjunctHasInputs(propNet, disjunct))
 				toRemove.add(disjunct);
+		}
 		disjuncts.removeAll(toRemove);
 
 		for (Component disjunct : disjuncts) {
+			PhaseTimeoutException.checkTimeout(factorTimeout);
 			Set<Component> subnet = getDisjunctSubnet(propNet, disjunct, disjuncts);
 			subnet.addAll(legalSubnet);
 			propNets.add(propNet.clone(subnet));

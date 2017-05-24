@@ -53,21 +53,21 @@ public class PropNetForwardPropUtils {
 	}
 
 	public static void forwardProp(PropNet propNet) {
-		//System.out.println("Start forward prop");
+		// System.out.println("Start forward prop");
 		HashSet<Proposition> base = new HashSet<Proposition>(propNet.getBasePropositions().values());
 		HashSet<Proposition> input = new HashSet<Proposition>(propNet.getInputPropositions().values());
 		Proposition init = propNet.getInitProposition();
 
 		LinkedList<Component> toProcess = new LinkedList<Component>();
-		//toProcess.addAll((Collection<? extends Component>) base);
-		//toProcess.addAll((Collection<? extends Component>) input);
+		// toProcess.addAll((Collection<? extends Component>) base);
+		// toProcess.addAll((Collection<? extends Component>) input);
 		toProcess.add(init);
 		for (Component c : propNet.getComponents()) {
 			if (base.contains(c) || input.contains(c) || c instanceof Constant || c instanceof Transition) {
 				toProcess.add(c);
 			}
 		}
-		//toProcess.addAll(propNet.getComponents());
+		// toProcess.addAll(propNet.getComponents());
 
 		while (!toProcess.isEmpty()) {
 			Component prop = toProcess.poll();
@@ -76,32 +76,32 @@ public class PropNetForwardPropUtils {
 			if (!prop.initialized || prop.state != newState) {
 				prop.state = newState;
 				for (Component c : prop.getOutputs()) {
-					// int delta = prop.state == true ? 1 : -1;
+					int delta = prop.state == true ? 1 : -1;
 					if (c instanceof And) {
 
-						// if (!prop.initialized) {
-						int actualNumTrue = 0;
-						for (Component in : c.getInputs()) {
-							if (in.state) {
-								actualNumTrue += 1;
+						if (!prop.initialized) {
+							int actualNumTrue = 0;
+							for (Component in : c.getInputs()) {
+								if (in.state) {
+									actualNumTrue += 1;
+								}
 							}
+							((And) c).numTrue = actualNumTrue;
+						} else {
+							((And) c).numTrue += delta;
 						}
-						((And) c).numTrue = actualNumTrue;
-						// } else {
-						// ((And) c).numTrue += delta;
-						// }
 					} else if (c instanceof Or) {
-						// if (!prop.initialized) {
-						int actualNumTrue = 0;
-						for (Component in : c.getInputs()) {
-							if (in.state) {
-								actualNumTrue += 1;
+						if (!prop.initialized) {
+							int actualNumTrue = 0;
+							for (Component in : c.getInputs()) {
+								if (in.state) {
+									actualNumTrue += 1;
+								}
 							}
+							((Or) c).numTrue = actualNumTrue;
+						} else {
+							((Or) c).numTrue += delta;
 						}
-						((Or) c).numTrue = actualNumTrue;
-						// } else {
-						// ((Or) c).numTrue += delta;
-						// }
 					}
 					// System.out.println("Adding to processing queue");
 					toProcess.add(c);
@@ -114,10 +114,10 @@ public class PropNetForwardPropUtils {
 	private static boolean propGetPInternal(Component prop, Set<Proposition> Base, Set<Proposition> Input,
 			Proposition Init) {
 		if (Base.contains(prop)) {
-			//if(prop.getValue()){
-			//System.out.println("Base prop: ");
-			//System.out.println(prop.getValue() + prop.toString());
-			//}
+			// if(prop.getValue()){
+			// System.out.println("Base prop: ");
+			// System.out.println(prop.getValue() + prop.toString());
+			// }
 			return prop.getValue();
 		} else if (Input.contains(prop)) {
 			// System.out.println("Input prop: ");
@@ -150,7 +150,7 @@ public class PropNetForwardPropUtils {
 			// props are base case
 			return prop.getValue();
 		} else {
-			//System.out.println("Constant prop: ");
+			// System.out.println("Constant prop: ");
 			// System.out.println(prop.toString());
 			assert (prop instanceof Constant);
 			return prop.getValue();

@@ -138,7 +138,7 @@ public class MCTSNode {
 		return Pair.of(bestMove, bestUtility);
 	}
 
-	private boolean fullyExploreNode(){
+	private boolean fullyExploreNode(long turnTimeout) throws PhaseTimeoutException{
 		if(isFullyExplored){
 			return true;
 		}
@@ -154,9 +154,11 @@ public class MCTSNode {
 		double minimaxScore = 0;
 		Move minimaxMove = null;
 		for (int i = 0; i < numPlayerMoves; i++){
+			PhaseTimeoutException.checkTimeout(turnTimeout);
 			double minScore = 0;
 			boolean foundMinScore = false;
 			for (int j = 0; j < numOpponentMoves; j++) {
+				PhaseTimeoutException.checkTimeout(turnTimeout);
 				// do minimax here
 				int childIdx = i*numOpponentMoves+j;
 				double childFullyExploredVal = children.get(childIdx).fullyExploredValue;
@@ -184,8 +186,8 @@ public class MCTSNode {
 		return childIdx / numPlayerMoves;
 	}
 
-	private double expandAndSimulate()
-			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+	private double expandAndSimulate(long turnTimeout)
+			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException {
 		// expand
 		int playerMoveIdx = getPlayerIdxFromChildIdx(children.size());
 		int opponentMoveIdx = getOpponentIdxFromChildIdx(children.size());
@@ -205,7 +207,12 @@ public class MCTSNode {
 
 		// simulate
 		//DebugLog.output("Performing depth charge");
-		MachineState mcState = machine.performDepthCharge(newState, new int[1]);
+		MachineState mcState = newState;
+		while(!machine.isTerminal(mcState)){
+			PhaseTimeoutException.checkTimeout(turnTimeout);
+			mcState = machine.getRandomNextState(mcState);
+		}
+		//machine.performDepthCharge(newState, new int[1]);
 		//DebugLog.output("Depth charge complete");
 		return machine.getGoal(mcState, player);
 	}
@@ -218,7 +225,7 @@ public class MCTSNode {
 			return terminalValue;
 		}
 
-		if(fullyExploreNode()){
+		if(fullyExploreNode(turnTimeout)){
 			return fullyExploredValue;
 		}
 
@@ -228,14 +235,16 @@ public class MCTSNode {
 																	// expansion
 																	// phase
 			selectedIdx = children.size();
-			bpr = expandAndSimulate();
+			bpr = expandAndSimulate(turnTimeout);
 		} else {
 			// select best player move based on criteria
 			double bestPlayerScore = 0;
 			int bestPlayerIdx = 0;
 			for (int i = 0; i < numPlayerMoves; i++) {
+				PhaseTimeoutException.checkTimeout(turnTimeout);
 				boolean allChildrenFullyExploredForPlayerMove = true;
 				for(int j = 0; j < numOpponentMoves; j++){
+					PhaseTimeoutException.checkTimeout(turnTimeout);
 					if(!children.get(numOpponentMoves*i + j).isFullyExplored){
 						allChildrenFullyExploredForPlayerMove = false;
 						break;
@@ -256,6 +265,7 @@ public class MCTSNode {
 			double bestOpponentScore = 0;
 			int bestOpponentIdx = 0;
 			for (int i = 0; i < numOpponentMoves; i++) {
+				PhaseTimeoutException.checkTimeout(turnTimeout);
 				if(children.get(numOpponentMoves*bestPlayerIdx + i).isFullyExplored){
 					continue;
 				}
@@ -301,7 +311,7 @@ public class MCTSNode {
 		//this.explorationCoefficient = Math.min(Math.max(Math.sqrt(utilVariance/(totalVisits)), 40),150);
 
 
-		if(fullyExploreNode()){
+		if(fullyExploreNode(turnTimeout)){
 			return fullyExploredValue;
 		}
 
