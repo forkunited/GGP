@@ -25,7 +25,7 @@ import org.ggp.dhtp.util.DebugLog;
 
 public class FactoredMCTSPlayer extends StateMachineGamer {
 	private static final double TIMEOUT_SAFETY_MARGIN = 0.75;
-	private static final double BEST_MOVE_SELECTION_MARGIN = 0.05;
+	private static final double BEST_MOVE_SELECTION_MARGIN = 0.10;
 	private static final double EXPLORATION_COEFFICIENT = 50.0;
 
 	private SamplePropNetStateMachine propNetMachine;

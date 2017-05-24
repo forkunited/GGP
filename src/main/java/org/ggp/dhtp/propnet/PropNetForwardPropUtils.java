@@ -59,14 +59,15 @@ public class PropNetForwardPropUtils {
 		Proposition init = propNet.getInitProposition();
 
 		LinkedList<Component> toProcess = new LinkedList<Component>();
-		// toProcess.addAll((Collection<? extends Component>) base);
-		// toProcess.addAll((Collection<? extends Component>) input);
-		// for(Component c : propNet.getComponents()){
-		// if(base.contains(c) || input.contains(c) || c instanceof Constant){
-		// toProcess.add(c);
-		// }
-		// }
-		toProcess.addAll(propNet.getComponents());
+		//toProcess.addAll((Collection<? extends Component>) base);
+		//toProcess.addAll((Collection<? extends Component>) input);
+		toProcess.add(init);
+		for (Component c : propNet.getComponents()) {
+			if (base.contains(c) || input.contains(c) || c instanceof Constant || c instanceof Transition) {
+				toProcess.add(c);
+			}
+		}
+		//toProcess.addAll(propNet.getComponents());
 
 		while (!toProcess.isEmpty()) {
 			Component prop = toProcess.poll();
