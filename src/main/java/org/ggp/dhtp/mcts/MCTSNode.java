@@ -150,7 +150,7 @@ public class MCTSNode {
 				return false;
 			}
 		}
-		DebugLog.output("All children fully explored -- collapsing state!");
+		//DebugLog.output("All children fully explored -- collapsing state!");
 		double minimaxScore = 0;
 		Move minimaxMove = null;
 		for (int i = 0; i < numPlayerMoves; i++){
@@ -299,6 +299,11 @@ public class MCTSNode {
 		//DebugLog.output("Setting exploration coef to "+ Math.max(Math.sqrt(utilVariance/(totalVisits-1)), 0));
 		//TODO: uncomment following line to set exploration coefficient based on variance of utility
 		//this.explorationCoefficient = Math.min(Math.max(Math.sqrt(utilVariance/(totalVisits)), 40),150);
+
+
+		if(fullyExploreNode()){
+			return fullyExploredValue;
+		}
 
 		return bpr;
 	}

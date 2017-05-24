@@ -24,7 +24,7 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBuilder;
-import org.ggp.dhtp.propnet.PropNetBackPropUtils;
+import org.ggp.dhtp.propnet.PropNetForwardPropUtils;
 
 
 @SuppressWarnings("unused")
@@ -64,8 +64,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public boolean isTerminal(MachineState state) {
     	//System.out.println("Is terminal");
-        PropNetBackPropUtils.markBases(state, propNet);
-        return PropNetBackPropUtils.propMarkP(propNet.getTerminalProposition(), propNet);
+    	PropNetForwardPropUtils.markBases(state, propNet);
+    	PropNetForwardPropUtils.forwardProp(propNet);
+        return PropNetForwardPropUtils.propMarkP(propNet.getTerminalProposition(), propNet);
     }
 
     /**
@@ -79,11 +80,12 @@ public class SamplePropNetStateMachine extends StateMachine {
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
     	//System.out.println("Get Goal");
-        PropNetBackPropUtils.markBases(state, propNet);
+    	PropNetForwardPropUtils.markBases(state, propNet);
+    	PropNetForwardPropUtils.forwardProp(propNet);
         Set<Proposition> goalProps = propNet.getGoalPropositions().get(role);
         Proposition pMatch = null;
         for (Proposition p : goalProps) {
-        	if (PropNetBackPropUtils.propMarkP(p, propNet)) {
+        	if (PropNetForwardPropUtils.propMarkP(p, propNet)) {
         		if (pMatch != null) {
         			throw new GoalDefinitionException(state, role);
         		}
@@ -107,11 +109,13 @@ public class SamplePropNetStateMachine extends StateMachine {
     	//System.out.println("Get Init state");
         Proposition init = propNet.getInitProposition();
         init.setValue(true);
+        PropNetForwardPropUtils.forwardProp(propNet);
         /* Propagate to all base propositions */
         for (Proposition baseProp : propNet.getBasePropositions().values()) {
         	/* Transition.getValue() returns true if INIT feeds into Transition */
         	baseProp.setValue(baseProp.getSingleInput().getValue());
         }
+        init.setValue(false);
         return getStateFromBaseSimple(); //TODO This can be optimized
     }
 
@@ -162,12 +166,21 @@ public class SamplePropNetStateMachine extends StateMachine {
     public List<Move> getLegalMoves(MachineState state, Role role)
             throws MoveDefinitionException {
     	//System.out.println("Get Legal moves");
-        PropNetBackPropUtils.markBases(state, propNet);
+    	PropNetForwardPropUtils.markBases(state, propNet);
+    	PropNetForwardPropUtils.forwardProp(propNet);
         Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
         ArrayList<Move> moves = new ArrayList<Move>();
     	for (Proposition p: legalProps) {
+    		//System.out.println("Checking legality of " + p.toString());
+    		//System.out.println("State is " + p.state);
+    		//for(Component c : p.getInputs()){
+    		//	System.out.println(c);
+    		//	for(Component c2 : c.getInputs()){
+    		//		System.out.println(c2);
+    		//	}
+    		//}
     		/* Only add the move if its allowed in this state */
-    		if (PropNetBackPropUtils.propMarkP(p, propNet)) {
+    		if (PropNetForwardPropUtils.propMarkP(p, propNet)) {
     			moves.add(getMoveFromProposition(p));
     		}
     	}
@@ -182,12 +195,13 @@ public class SamplePropNetStateMachine extends StateMachine {
             throws TransitionDefinitionException {
     	//String TS = new SimpleDateFormat("yyyyMMddHHmm'.txt'").format(new Date());
     	//System.out.println("Compute next state");
-    	PropNetBackPropUtils.markBases(state, propNet);
-    	PropNetBackPropUtils.markActions(toDoes(moves), propNet); /* TODO toDoes() can be optimized */
+    	PropNetForwardPropUtils.markBases(state, propNet);
+    	PropNetForwardPropUtils.markActions(toDoes(moves), propNet); /* TODO toDoes() can be optimized */
+    	PropNetForwardPropUtils.forwardProp(propNet);
     	Map<Proposition, Boolean> baseVals = new HashMap<Proposition, Boolean>();
     	/* Record bases */
     	for (Proposition baseProp : propNet.getBasePropositions().values()) {
-    		if (PropNetBackPropUtils.propMarkP(baseProp.getSingleInput().getSingleInput(), propNet)) {
+    		if (PropNetForwardPropUtils.propMarkP(baseProp.getSingleInput().getSingleInput(), propNet)) {
     			baseVals.put(baseProp, true);
     		} else {
     			baseVals.put(baseProp, false);
@@ -198,6 +212,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	for (Proposition baseProp : propNet.getBasePropositions().values()) {
     		baseProp.setValue(baseVals.get(baseProp));
     	}
+    	PropNetForwardPropUtils.forwardProp(propNet);
     	return getStateFromBaseSimple(); /* TODO this can be optimized */
     }
 

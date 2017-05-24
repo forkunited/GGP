@@ -25,6 +25,8 @@ public abstract class Component implements Serializable
     private final Set<Component> inputs;
     /** The outputs of the component. */
     private final Set<Component> outputs;
+    public boolean state = false;
+    public boolean initialized = false;
 
     /**
      * Creates a new Component with no inputs or outputs.
@@ -126,8 +128,10 @@ public abstract class Component implements Serializable
      *
      * @return The value of the Component.
      */
-    public abstract boolean getValue();
-
+    public boolean getValue()
+	{
+		return this.state;
+	}
     /**
      * Returns a representation of the Component in .dot format.
      *

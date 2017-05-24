@@ -12,17 +12,6 @@ import org.ggp.base.util.propnet.architecture.Component;
 public final class Not extends Component
 {
 	/**
-	 * Returns the inverse of the input to the not.
-	 *
-	 * @see org.ggp.base.util.propnet.architecture.Component#getValue()
-	 */
-	@Override
-	public boolean getValue()
-	{
-		return !getSingleInput().getValue();
-	}
-
-	/**
 	 * @see org.ggp.base.util.propnet.architecture.Component#toString()
 	 */
 	@Override

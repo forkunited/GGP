@@ -48,7 +48,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		//this.propNetMachine.getPropNet().renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output.dot");
+		//this.propNetMachine.getPropNet().renderToFile("/home/vk/0.dot");
 
 		DebugLog.output("Start Metagame");
 
@@ -86,6 +86,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		long turnTimeout = (long)(TIMEOUT_SAFETY_MARGIN * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 		int numDepthCharges = 0;
 		Role role = getRole();
+		this.propNetMachine.getPropNet().renderToFile("/home/vk/1.dot");
 
 		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
 		for (CachedStateMachine machine : this.factoredMachines) {
