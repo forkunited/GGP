@@ -26,7 +26,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 	public StateMachine getInitialStateMachine() {
 		// TODO Auto-generated method stub
 		if(USE_PROPNET){
-			return new CachedStateMachine(new SamplePropNetStateMachine());
+			return new SamplePropNetStateMachine();
 
 		} else {
 			return new CachedStateMachine(new ProverStateMachine());

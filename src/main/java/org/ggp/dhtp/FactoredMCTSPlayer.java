@@ -16,7 +16,6 @@ import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
-import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
@@ -39,14 +38,14 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	private static final double METAGAME_TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double FACTOR_SAFETY_MARGIN = 0.25;
 	private static final double MCTS_SAFETY_MARGIN = 0.50;
-	private static final double BEST_MOVE_SELECTION_MARGIN = 0.10;
+	private static final double BEST_MOVE_SELECTION_MARGIN = 0.20;
 	private static final double EXPLORATION_COEFFICIENT = 60.0;
 	private static final double DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF = 0.0;
 
 	private SamplePropNetStateMachine propNetMachine;
 
 	private List<MCTSNode> currNodes;
-	private List<CachedStateMachine> factoredMachines;
+	private List<StateMachine> factoredMachines;
 
 	boolean reachedAllTerminal;
 	boolean runHeur;
@@ -88,7 +87,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	@Override
 	public StateMachine getInitialStateMachine() {
 		this.propNetMachine = new SamplePropNetStateMachine();
-		return new CachedStateMachine(this.propNetMachine);
+		return this.propNetMachine;
 	}
 
 	private void heuristicMetaGame() {
@@ -141,7 +140,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 
 
 		heuristicMetaGame();
-		this.factoredMachines = new ArrayList<CachedStateMachine>();
+		this.factoredMachines = new ArrayList<StateMachine>();
 		this.currNodes = new ArrayList<MCTSNode>();
 		if (this.getStateMachine().getRoleIndices().size() == 1) {
 			try {
@@ -161,7 +160,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 															// is annoying. But
 															// simplest given
 															// existing codebase
-					this.factoredMachines.add(new CachedStateMachine(factoredMachine));
+					this.factoredMachines.add(factoredMachine);
 					// propNet.renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output"
 					// + i + ".dot");
 				}
@@ -170,22 +169,22 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 						+ " to " + reachablePropNet.getComponents().size());
 				DebugLog.output("Factored into " + this.factoredMachines.size() + " propnets");
 			} catch (PhaseTimeoutException pte) {
-				this.factoredMachines = new ArrayList<CachedStateMachine>();
-				this.factoredMachines.add(new CachedStateMachine(this.propNetMachine));
+				this.factoredMachines = new ArrayList<StateMachine>();
+				this.factoredMachines.add(this.propNetMachine);
 			}
 		} else {
 			// SamplePropNetStateMachine singleMachine = new
 			// SamplePropNetStateMachine();
 			// PropNet propNet = this.propNetMachine.getPropNet();
 			// singleMachine.initialize(propNet);
-			this.factoredMachines.add(new CachedStateMachine(this.propNetMachine));
+			this.factoredMachines.add(this.propNetMachine);
 		}
 		int numDepthCharges = 0;
 		Role role = getRole();
 		// this.propNetMachine.getPropNet().renderToFile("/home/vk/1.dot");
 
 		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-		for (CachedStateMachine machine : this.factoredMachines) {
+		for (StateMachine machine : this.factoredMachines) {
 			this.currNodes.add(new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT,
 					new HashMap<MachineState, MCTSNode>(), this.h));
 		}
@@ -193,7 +192,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		try {
 			while (System.currentTimeMillis() < turnTimeout) {
 				for (MCTSNode node : this.currNodes)
-					node.performIteration(turnTimeout);
+					node.performIteration(turnTimeout, false);
 				numDepthCharges++;
 			}
 		} catch (Exception e) {
@@ -382,7 +381,8 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 			long iterDeepeningTimeout = (long) ((TIMEOUT_SAFETY_MARGIN - BEST_MOVE_SELECTION_MARGIN
 					- MCTS_SAFETY_MARGIN) * (timeout - System.currentTimeMillis())) + System.currentTimeMillis();
 			DebugLog.output("Timeout is "+ timeout +" will return by " + turnTimeout);
-			System.gc();
+			//System.gc();
+			//DebugLog.output("Done with gc");
 			int numDepthCharges = 0;
 			if (runHeur) {
 				heurMove = getIterDeepeningMove(iterDeepeningTimeout);
@@ -410,7 +410,10 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				while (System.currentTimeMillis() < mctsTimeout && !allFullyExplored) {
 					allFullyExplored = true;
 					for (MCTSNode currNode : this.currNodes) {
-						currNode.performIteration(mctsTimeout);
+						//if(numDepthCharges % 500 == 0){
+							//DebugLog.output("Completed "+numDepthCharges);
+						//}
+						currNode.performIteration(mctsTimeout, false);
 						numDepthCharges++;
 
 						if (!currNode.isFullyExplored())
@@ -418,6 +421,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 					}
 				}
 			} catch (PhaseTimeoutException e){
+				DebugLog.output("Timeout triggered during mcts");
 			} finally {
 				DebugLog.output("Picking best move");
 				double dcps = (1000.0*(double) numDepthCharges) / (Math.max(System.currentTimeMillis() - depthChargeStart, 100.0));

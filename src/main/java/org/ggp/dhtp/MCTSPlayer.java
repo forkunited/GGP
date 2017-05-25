@@ -49,7 +49,7 @@ public class MCTSPlayer extends StateMachineGamer {
 
 		try{
 			while (System.currentTimeMillis() < turnTimeout) {
-				currNode.performIteration(turnTimeout);
+				currNode.performIteration(turnTimeout, true);
 				numDepthCharges++;
 			}
 		} catch (Exception e){
@@ -84,7 +84,7 @@ public class MCTSPlayer extends StateMachineGamer {
 
 			try{
 				while (System.currentTimeMillis() < mctsTimeout && !currNode.isFullyExplored()) {
-					currNode.performIteration(mctsTimeout);
+					currNode.performIteration(mctsTimeout, true);
 					numDepthCharges++;
 				}
 			} finally {
