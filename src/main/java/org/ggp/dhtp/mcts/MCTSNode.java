@@ -386,7 +386,7 @@ public class MCTSNode {
 		// Math.max(Math.sqrt(utilVariance/(totalVisits-1)), 0));
 		// TODO: uncomment following line to set exploration coefficient based
 		// on variance of utility
-		this.explorationCoefficient = Math.sqrt(utilVar / (totalVisits));
+		this.explorationCoefficient = Math.max(10,Math.sqrt(utilVar / (totalVisits)));
 
 		if (fullyExploreNode(turnTimeout)) {
 			return fullyExploredValue;
