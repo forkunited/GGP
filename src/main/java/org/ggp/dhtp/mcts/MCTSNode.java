@@ -117,7 +117,7 @@ public class MCTSNode {
 		int numPlayerVisits = playerVisits.get(playerMoveIdx);
 		//DebugLog.output("Exploration coefficient is " + explorationCoefficient);
 
-		return (playerUtility) / numPlayerVisits + playerHeuristic
+		return (playerUtility+playerHeuristic) / (numPlayerVisits)
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numPlayerVisits);
 	}
 
@@ -127,7 +127,7 @@ public class MCTSNode {
 		double opponentHeuristic = opponentHeur.get(opponentMoveIdx);
 		int numOpponentVisits = opponentVisits.get(opponentMoveIdx);
 
-		return -1 * (opponentUtility)/ numOpponentVisits - opponentHeuristic
+		return -1 * (opponentUtility+opponentHeuristic)/ (numOpponentVisits)
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numOpponentVisits);
 	}
 
@@ -146,6 +146,7 @@ public class MCTSNode {
 			PhaseTimeoutException.checkTimeout(turnTimeout);
 			double averageUtility = playerVisits.get(i) == 0 ? 0 : playerUtil.get(i) / playerVisits.get(i);
 			DebugLog.output("Average utility of "+ playerMoves.get(i) + " is "+ averageUtility);
+			DebugLog.output("Visits of "+ playerMoves.get(i) + " is "+ playerVisits.get(i));
 			if (bestMove == null || bestUtility < averageUtility) {
 				bestMove = playerMoves.get(i);
 				bestUtility = averageUtility;
