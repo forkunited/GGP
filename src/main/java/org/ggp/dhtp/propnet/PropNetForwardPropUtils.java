@@ -1,5 +1,6 @@
 package org.ggp.dhtp.propnet;
 
+import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -168,5 +169,35 @@ public class PropNetForwardPropUtils {
 			return prop.getValue();
 		}
 
+	}
+
+
+	public static boolean markBasesInternal(InternalMachineState state, PropNet propNet) {
+		return markBasesInternal(state, propNet, false);
+	}
+
+	public static boolean markBasesInternal(InternalMachineState state, PropNet propNet, boolean verbose) {
+		// TODO Auto-generated method stub
+		/* Remove sentences to only include base */
+
+		if (verbose) System.out.println("Start mark bases");
+		BitSet stateToSet = (BitSet)state.getBitSet().clone();
+		BitSet baseBits = propNet.getBaseBits();
+		boolean modified = false;
+		for (int i = baseBits.nextSetBit(0); i >= 0; i = baseBits.nextSetBit(i + 1)) {
+			// operate on index i here
+			Component c = propNet.getComponentList().get(i);
+			if (verbose) System.out.println(c.toString()+" is set to "+stateToSet.get(i));
+			if(c.state != stateToSet.get(i)){
+				((Proposition)c).setValue(stateToSet.get(i));
+				modified = true;
+			}
+
+			if (i == Integer.MAX_VALUE) {
+				break; // or (i+1) would overflow
+			}
+		}
+		if (verbose) System.out.println("End mark bases");
+		return modified;
 	}
 }

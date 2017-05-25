@@ -1,8 +1,7 @@
 package org.ggp.dhtp;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
-import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
@@ -15,29 +14,17 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.propnet.SamplePropNetStateMachine;
 
-public class MicroBenchmarkPlayer extends StateMachineGamer {
-
-	Player p;
-	boolean USE_PROPNET = true;
-	boolean USE_CACHE = false;
-
+/**
+ * CompulsiveDeliberationPlayer for single player games described at
+ * http://logic.stanford.edu/ggp/notes/chapter_05.html
+ *
+ * @author Bill McDowell
+ *
+ */
+public class CompulsiveDeliberationPlayer extends StateMachineGamer {
 	@Override
-	public SamplePropNetStateMachine getInitialStateMachine() {
+	public StateMachine getInitialStateMachine() {
 		// TODO Auto-generated method stub
-		/*
-		StateMachine rawMachine;
-		if(USE_PROPNET){
-			rawMachine = new SamplePropNetStateMachine();
-
-		} else {
-			rawMachine = new ProverStateMachine();
-		}
-		if(USE_CACHE){
-			return new CachedStateMachine(rawMachine);
-		} else {
-			return rawMachine;
-		}
-		*/
 		return new SamplePropNetStateMachine();
 	}
 
@@ -48,11 +35,29 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 
 	}
 
+	// NOTE: If this method is changed to type (Role x State x Action -> Integer)
+	// then the code will be cleaner.  That would differ from the notes, though, so I
+	// just left it this way.
+	private int maxScore(Role role, MachineState state) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+		StateMachine machine = getStateMachine();
+		if (machine.isTerminal(state)) {
+			return machine.getGoal(state, role);
+		}
+
+		List<Move> moves = machine.getLegalMoves(state,role);
+		int score = 0;
+		for (Move move : moves) {
+			int moveScore = maxScore(role, machine.getNextState(state, Arrays.asList(move)));
+			if (moveScore > score)
+				score = moveScore;
+		}
+
+		return score;
+	}
+
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		long turnTime = timeout - System.currentTimeMillis();
-		long limit = (long)(turnTime*0.75) + System.currentTimeMillis();
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
 		if(machine instanceof SamplePropNetStateMachine){
@@ -60,18 +65,19 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 		}
 		Role role = getRole();
 		List<Move> moves = machine.getLegalMoves(state,role);
-		int randomIndex = new Random().nextInt(moves.size());
-		long mctsStart = System.currentTimeMillis();
-		int numDepthCharges=0;
-		while(System.currentTimeMillis() < limit){
-			machine.performDepthCharge(state, new int[1]);
-			numDepthCharges++;
-			break;
+		Move selectedMove = moves.get(0);
+		int score = 0;
+		for (Move move : moves) {
+			int moveScore = maxScore(role, machine.getNextState(state, Arrays.asList(move)));
+			if (moveScore == 100) {
+				return move;
+			} else if (moveScore > score) {
+				score = moveScore;
+				selectedMove = move;
+			}
 		}
-		long mctsMs = System.currentTimeMillis() - mctsStart;
-		double dcps = 1000.0*((double)numDepthCharges)/mctsMs;
-		System.out.print("DCPS: "+dcps+"\n");
-		return moves.get(randomIndex);
+
+		return selectedMove;
 	}
 
 	@Override
@@ -95,7 +101,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "Don't hate the microbenchmark player";
+		return "Don't hate the compulsive deliberation player";
 	}
 
 }

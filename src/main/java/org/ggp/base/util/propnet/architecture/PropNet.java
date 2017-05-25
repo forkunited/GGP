@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -109,9 +110,15 @@ public final class PropNet
 	private ArrayList<Component> inputComponentSet;
 	public LinkedList<Component> toProcess;
 
+	private BitSet baseBits;
+	private BitSet setBits;
+	private ArrayList<Component> componentList;
+
 	public void addComponent(Component c)
 	{
-		components.add(c);
+		if(components.add(c)){
+			componentList.add(c);
+		}
 		if (c instanceof Proposition) propositions.add((Proposition)c);
 	}
 
@@ -127,6 +134,10 @@ public final class PropNet
 
 	    this.roles = roles;
 		this.components = components;
+		componentList = new ArrayList<Component>();
+		for(Component c : components){
+			componentList.add(c);
+		}
 		this.propositions = recordPropositions();
 		this.basePropositions = recordBasePropositions();
 		this.inputPropositions = recordInputPropositions();
@@ -140,6 +151,38 @@ public final class PropNet
 		this.baseComponentSet = recordBaseComponentSet();
 		this.inputComponentSet = recordInputComponentSet();
 		this.toProcess = new LinkedList<Component>();
+		this.baseBits = new BitSet();
+		this.setBits = new BitSet();
+	}
+
+	public void updateBitSets(){
+		int i =0;
+		this.setBits = new BitSet(componentList.size());
+		this.baseBits = new BitSet(componentList.size());
+		for(Component c : componentList){
+			if(c.getValue()){
+				this.setBits.set(i);
+			}
+
+			if(c.isBase){
+				this.baseBits.set(i);
+			}
+			i++;
+		}
+	}
+
+
+
+	public ArrayList<Component> getComponentList(){
+		return componentList;
+	}
+
+	public BitSet getComponentBits(){
+		return setBits;
+	}
+
+	public BitSet getBaseBits(){
+		return baseBits;
 	}
 
 	private ArrayList<Component> recordBaseComponentSet() {

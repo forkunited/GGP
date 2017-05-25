@@ -184,8 +184,14 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		// this.propNetMachine.getPropNet().renderToFile("/home/vk/1.dot");
 
 		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
+
+
 		for (StateMachine machine : this.factoredMachines) {
-			this.currNodes.add(new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT,
+			MachineState initialState = machine.getInitialState();
+			if(machine instanceof SamplePropNetStateMachine){
+				initialState = ((SamplePropNetStateMachine)machine).getInitialStateInternal();
+			}
+			this.currNodes.add(new MCTSNode(machine, initialState, null, role, EXPLORATION_COEFFICIENT,
 					new HashMap<MachineState, MCTSNode>(), this.h));
 		}
 		long depthChargeStart = System.currentTimeMillis();
@@ -367,6 +373,10 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		DebugLog.output("Start select move");
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
+
+		if(machine instanceof SamplePropNetStateMachine){
+			state = ((SamplePropNetStateMachine)machine).convertToInternal(state);
+		}
 		Role role = getRole();
 		Move randomMove = machine.getRandomMove(state, role);
 		Move bestMove = null;
