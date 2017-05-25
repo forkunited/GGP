@@ -21,15 +21,22 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 
 	Player p;
 	boolean USE_PROPNET = true;
+	boolean USE_CACHE = false;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
 		// TODO Auto-generated method stub
+		StateMachine rawMachine;
 		if(USE_PROPNET){
-			return new SamplePropNetStateMachine();
+			rawMachine = new SamplePropNetStateMachine();
 
 		} else {
-			return new CachedStateMachine(new ProverStateMachine());
+			rawMachine = new ProverStateMachine();
+		}
+		if(USE_CACHE){
+			return new CachedStateMachine(rawMachine);
+		} else {
+			return rawMachine;
 		}
 	}
 
