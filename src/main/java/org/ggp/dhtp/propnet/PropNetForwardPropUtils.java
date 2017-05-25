@@ -85,13 +85,13 @@ public class PropNetForwardPropUtils {
 			boolean newState = propGetPInternal(prop, init);
 			if (!prop.initialized || prop.state != newState) {
 				prop.state = newState;
-				for (Component c : prop.getOutputs()) {
+				for (Component c : prop.getOutputArray()) {
 					int delta = prop.state == true ? 1 : -1;
 					if (c instanceof And) {
 
 						if (!prop.initialized) {
 							int actualNumTrue = 0;
-							for (Component in : c.getInputs()) {
+							for (Component in : c.getInputArray()) {
 								if (in.state) {
 									actualNumTrue += 1;
 								}
@@ -103,7 +103,7 @@ public class PropNetForwardPropUtils {
 					} else if (c instanceof Or) {
 						if (!prop.initialized) {
 							int actualNumTrue = 0;
-							for (Component in : c.getInputs()) {
+							for (Component in : c.getInputArray()) {
 								if (in.state) {
 									actualNumTrue += 1;
 								}
@@ -146,7 +146,7 @@ public class PropNetForwardPropUtils {
 		} else if (prop instanceof And) {
 			// System.out.println("Conjunction: ");
 			// System.out.println(prop.toString());
-			return ((And) prop).numTrue == prop.getInputs().size();
+			return ((And) prop).numTrue == prop.getInputArray().size();
 		} else if (prop instanceof Or) {
 			// System.out.println("Disjunction: ");
 			// System.out.println(prop.toString());

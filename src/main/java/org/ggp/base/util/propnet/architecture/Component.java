@@ -1,6 +1,7 @@
 package org.ggp.base.util.propnet.architecture;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +26,7 @@ public abstract class Component implements Serializable
     private final Set<Component> inputs;
     /** The outputs of the component. */
     private final Set<Component> outputs;
+    private final ArrayList<Component> outputArray, inputArray;
     public boolean state = false;
     public boolean initialized = false;
     public boolean isBase = false;
@@ -37,7 +39,9 @@ public abstract class Component implements Serializable
     public Component()
     {
         this.inputs = new HashSet<Component>();
+        this.inputArray = new ArrayList<Component>();
         this.outputs = new HashSet<Component>();
+        this.outputArray = new ArrayList<Component>();
     }
 
     /**
@@ -48,27 +52,35 @@ public abstract class Component implements Serializable
      */
     public void addInput(Component input)
     {
-        inputs.add(input);
+        if(inputs.add(input)){
+        	this.inputArray.add(input);
+        }
     }
 
     public void removeInput(Component input)
     {
-    	inputs.remove(input);
+    	if(inputs.remove(input)){
+    		inputArray.remove(input);
+    	}
     }
 
     public void removeOutput(Component output)
     {
-    	outputs.remove(output);
+    	if(outputs.remove(output)){
+    		outputArray.remove(output);
+    	}
     }
 
     public void removeAllInputs()
     {
 		inputs.clear();
+		inputArray.clear();
 	}
 
 	public void removeAllOutputs()
 	{
 		outputs.clear();
+		outputArray.clear();
 	}
 
     /**
@@ -79,7 +91,9 @@ public abstract class Component implements Serializable
      */
     public void addOutput(Component output)
     {
-        outputs.add(output);
+        if(outputs.add(output)){
+        	outputArray.add(output);
+        }
     }
 
     /**
@@ -100,8 +114,8 @@ public abstract class Component implements Serializable
      * @return The single input to the component.
      */
     public Component getSingleInput() {
-        assert inputs.size() == 1;
-        return inputs.iterator().next();
+        assert inputArray.size() == 1;
+        return inputArray.get(0);
     }
 
     /**
@@ -114,6 +128,15 @@ public abstract class Component implements Serializable
         return outputs;
     }
 
+
+    public ArrayList<Component> getInputArray(){
+    	return inputArray;
+    }
+
+    public ArrayList<Component> getOutputArray(){
+    	return outputArray;
+    }
+
     /**
      * A convenience method, to get a single output.
      * To be used only when the component is known to have
@@ -122,8 +145,8 @@ public abstract class Component implements Serializable
      * @return The single output to the component.
      */
     public Component getSingleOutput() {
-        assert outputs.size() == 1;
-        return outputs.iterator().next();
+        assert outputArray.size() == 1;
+        return outputArray.get(0);
     }
 
     /**

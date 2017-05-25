@@ -117,7 +117,7 @@ public class MCTSNode {
 		int numPlayerVisits = playerVisits.get(playerMoveIdx);
 		//DebugLog.output("Exploration coefficient is " + explorationCoefficient);
 
-		return (playerHeuristic + playerUtility) / numPlayerVisits +
+		return (playerUtility) / numPlayerVisits + playerHeuristic
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numPlayerVisits);
 	}
 
@@ -127,7 +127,7 @@ public class MCTSNode {
 		double opponentHeuristic = opponentHeur.get(opponentMoveIdx);
 		int numOpponentVisits = opponentVisits.get(opponentMoveIdx);
 
-		return -1 * (opponentUtility + opponentHeuristic)/ numOpponentVisits -
+		return -1 * (opponentUtility)/ numOpponentVisits - opponentHeuristic
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numOpponentVisits);
 	}
 

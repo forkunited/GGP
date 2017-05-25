@@ -1,7 +1,6 @@
 package org.ggp.base.util.statemachine.implementation.propnet;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -210,22 +209,19 @@ public class SamplePropNetStateMachine extends StateMachine {
     	if(basesMod || axnsMod){
     		PropNetForwardPropUtils.forwardProp(propNet);
     	}
-    	Map<Proposition, Boolean> baseVals = new HashMap<Proposition, Boolean>();
-    	/* Record bases */
-    	for (Component c : propNet.getBaseComponentSet()) {
-    		Proposition baseProp = (Proposition) c;
-    		if (PropNetForwardPropUtils.propMarkP(baseProp.getSingleInput().getSingleInput(), propNet)) {
-    			baseVals.put(baseProp, true);
-    		} else {
-    			baseVals.put(baseProp, false);
-    		}
-        }
 
     	/* Update bases */
     	for (Component c : propNet.getBaseComponentSet()) {
-    		Proposition baseProp = (Proposition)c;
-    		baseProp.setValue(baseVals.get(baseProp));
-    	}
+    		Proposition baseProp = (Proposition) c;
+    		if (PropNetForwardPropUtils.propMarkP(baseProp.getSingleInput().getSingleInput(), propNet)) {
+
+        		baseProp.setValue(true);
+    		} else {
+
+        		baseProp.setValue(false);
+    		}
+        }
+
     	PropNetForwardPropUtils.forwardProp(propNet);
     	return getStateFromBaseSimple(); /* TODO this can be optimized */
     }

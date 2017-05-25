@@ -3,6 +3,7 @@ package org.ggp.base.util.propnet.architecture;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -101,11 +102,12 @@ public final class PropNet
 	/** A helper list of all of the roles. */
 	private final List<Role> roles;
 
-	private final Set<Component> constantComponents;
-	private final Set<Component> transitionComponents;
+	private final ArrayList<Component> constantComponents;
+	private final ArrayList<Component> transitionComponents;
 
-	private Set<Component> baseComponentSet;
-	private Set<Component> inputComponentSet;
+	private ArrayList<Component> baseComponentSet;
+	private ArrayList<Component> inputComponentSet;
+	public LinkedList<Component> toProcess;
 
 	public void addComponent(Component c)
 	{
@@ -137,22 +139,23 @@ public final class PropNet
 		this.constantComponents = recordConstantComponents();
 		this.baseComponentSet = recordBaseComponentSet();
 		this.inputComponentSet = recordInputComponentSet();
+		this.toProcess = new LinkedList<Component>();
 	}
 
-	private Set<Component> recordBaseComponentSet() {
+	private ArrayList<Component> recordBaseComponentSet() {
 
-		return new HashSet<Component>(this.getBasePropositions().values());
-
-	}
-
-	private Set<Component> recordInputComponentSet() {
-
-		return new HashSet<Component>(this.getInputPropositions().values());
+		return new ArrayList<Component>(this.getBasePropositions().values());
 
 	}
 
-	private Set<Component> recordConstantComponents() {
-		HashSet<Component> cset = new HashSet<Component>();
+	private ArrayList<Component> recordInputComponentSet() {
+
+		return new ArrayList<Component>(this.getInputPropositions().values());
+
+	}
+
+	private ArrayList<Component> recordConstantComponents() {
+		ArrayList<Component> cset = new ArrayList<Component>();
 		for(Component c : components){
 			if(c instanceof Constant){
 				cset.add(c);
@@ -161,13 +164,14 @@ public final class PropNet
 		return cset;
 	}
 
-	private Set<Component> recordTransitionComponents() {
-		HashSet<Component> cset = new HashSet<Component>();
+	private ArrayList<Component> recordTransitionComponents() {
+		ArrayList<Component> cset = new ArrayList<Component>();
 		for(Component c : components){
 			if(c instanceof Transition){
 				cset.add(c);
 			}
 		}
+
 		return cset;
 	}
 
@@ -288,22 +292,22 @@ public final class PropNet
 		return terminalProposition;
 	}
 
-	public Set<Component> getConstantComponents()
+	public ArrayList<Component> getConstantComponents()
 	{
 		return constantComponents;
 	}
 
 
-	public Set<Component> getTransitionComponents()
+	public ArrayList<Component> getTransitionComponents()
 	{
 		return transitionComponents;
 	}
 
-	public Set<Component> getBaseComponentSet(){
+	public ArrayList<Component> getBaseComponentSet(){
 		return baseComponentSet;
 	}
 
-	public Set<Component> getInputComponentSet(){
+	public ArrayList<Component> getInputComponentSet(){
 		return inputComponentSet;
 	}
 
