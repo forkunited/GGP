@@ -38,7 +38,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	private static final double METAGAME_TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double FACTOR_SAFETY_MARGIN = 0.25;
 	private static final double MCTS_SAFETY_MARGIN = 0.50;
-	private static final double BEST_MOVE_SELECTION_MARGIN = 0.20;
+	private static final double BEST_MOVE_SELECTION_MARGIN = 0.10;
 	private static final double EXPLORATION_COEFFICIENT = 60.0;
 	private static final double DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF = 0.0;
 
