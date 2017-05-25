@@ -44,7 +44,7 @@ public class MCTSPlayer extends StateMachineGamer {
 		Role role = getRole();
 
 		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-		currNode = new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT, new HashMap<MachineState, MCTSNode>());
+		currNode = new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT, new HashMap<MachineState, MCTSNode>(), null);
 
 
 		try{
@@ -79,7 +79,7 @@ public class MCTSPlayer extends StateMachineGamer {
 
 			if(currNode == null){
 				DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-				currNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT, new HashMap<MachineState,MCTSNode>());
+				currNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT, new HashMap<MachineState,MCTSNode>(), null);
 			}
 
 			try{

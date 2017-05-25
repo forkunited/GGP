@@ -13,11 +13,12 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.dhtp.util.DebugLog;
+import org.ggp.dhtp.util.Heuristic;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class MCTSNode {
 
-	List<Double> playerUtil, opponentUtil;
+	List<Double> playerUtil, opponentUtil, playerHeur, opponentHeur;
 	List<Integer> playerVisits, opponentVisits, combinedMoveVisits;
 	List<MCTSNode> children;
 	private MachineState state;
@@ -38,9 +39,11 @@ public class MCTSNode {
 	private boolean isFullyExplored;
 	private double fullyExploredValue;
 	private Move fullyExploredBestMove;
+	private Heuristic h;
+	private double heurVal;
 
 	public MCTSNode(StateMachine machine, MachineState state, MCTSNode parent, Role player,
-			double explorationCoefficient, Map<MachineState, MCTSNode> cachedNodes) throws MoveDefinitionException, GoalDefinitionException {
+			double explorationCoefficient, Map<MachineState, MCTSNode> cachedNodes, Heuristic h) throws MoveDefinitionException, GoalDefinitionException, TransitionDefinitionException {
 		this.machine = machine;
 		this.state = state;
 		//this.parents = new ArrayList<MCTSNode>();
@@ -49,6 +52,8 @@ public class MCTSNode {
 		this.playerVisits = null;
 		this.opponentUtil = null;
 		this.opponentVisits = null;
+		this.playerHeur = null;
+		this.opponentHeur = null;
 		this.player = player;
 		this.totalVisits = 0;
 		this.explorationCoefficient = explorationCoefficient;
@@ -67,16 +72,20 @@ public class MCTSNode {
 
 			this.playerUtil = new ArrayList<Double>(numPlayerMoves);
 			this.playerVisits = new ArrayList<Integer>(numPlayerMoves);
+			this.playerHeur = new ArrayList<Double>(numPlayerMoves);
 			for (int i = 0; i < numPlayerMoves; i++) {
 				this.playerUtil.add(0.0);
 				this.playerVisits.add(0);
+				this.playerHeur.add(0.0);
 			}
 			this.opponentUtil = new ArrayList<Double>(numOpponentMoves);
 			this.opponentVisits = new ArrayList<Integer>(numOpponentMoves);
+			this.opponentHeur = new ArrayList<Double>(numOpponentMoves);
 
 			for (int i = 0; i < numOpponentMoves; i++) {
 				this.opponentUtil.add(0.0);
 				this.opponentVisits.add(0);
+				this.opponentHeur.add(0.0);
 			}
 
 			this.combinedMoveVisits = new ArrayList<Integer>(numPlayerMoves * numOpponentMoves);
@@ -88,6 +97,12 @@ public class MCTSNode {
 			this.children = new ArrayList<MCTSNode>();
 			this.isFullyExplored = false;
 			this.fullyExploredValue = 0;
+			this.h = h;
+			if(this.h != null){
+				this.heurVal = h.evalState(player, state);
+			} else {
+				heurVal = 0.0;
+			}
 		}
 	}
 
@@ -98,18 +113,21 @@ public class MCTSNode {
 	private double getPlayerSelectionScore(int playerMoveIdx) {
 
 		double playerUtility = playerUtil.get(playerMoveIdx);
+		double playerHeuristic = playerHeur.get(playerMoveIdx);
 		int numPlayerVisits = playerVisits.get(playerMoveIdx);
 		//DebugLog.output("Exploration coefficient is " + explorationCoefficient);
-		return playerUtility / numPlayerVisits
+
+		return (playerHeuristic + playerUtility) / numPlayerVisits +
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numPlayerVisits);
 	}
 
 	private double getOpponentSelectionScore(int opponentMoveIdx) {
 
 		double opponentUtility = opponentUtil.get(opponentMoveIdx);
+		double opponentHeuristic = opponentHeur.get(opponentMoveIdx);
 		int numOpponentVisits = opponentVisits.get(opponentMoveIdx);
 
-		return -1 * opponentUtility / numOpponentVisits
+		return -1 * (opponentUtility + opponentHeuristic)/ numOpponentVisits -
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numOpponentVisits);
 	}
 
@@ -200,7 +218,7 @@ public class MCTSNode {
 			MCTSNode newChild = cachedNodes.get(newState);
 			children.add(newChild);
 		} else {
-			MCTSNode newChild = new MCTSNode(machine, newState, this, player, this.explorationCoefficient, cachedNodes);
+			MCTSNode newChild = new MCTSNode(machine, newState, this, player, this.explorationCoefficient, cachedNodes, this.h);
 			children.add(newChild);
 			cachedNodes.put(newState, newChild);
 		}
@@ -229,13 +247,14 @@ public class MCTSNode {
 			return fullyExploredValue;
 		}
 
-		double bpr;
+		double bpr, heur;
 		int selectedIdx;
 		if (children.size() < numPlayerMoves * numOpponentMoves) { // in
 																	// expansion
 																	// phase
 			selectedIdx = children.size();
 			bpr = expandAndSimulate(turnTimeout);
+			heur = children.get(selectedIdx).heurVal;
 		} else {
 			// select best player move based on criteria
 			double bestPlayerScore = 0;
@@ -279,6 +298,7 @@ public class MCTSNode {
 			}
 			int bestIdx = bestPlayerIdx*numOpponentMoves+bestOpponentIdx;
 			MCTSNode selectedChild = children.get(bestIdx);
+			heur = selectedChild.heurVal;
 			bpr = selectedChild.performIteration(turnTimeout);
 			selectedIdx = bestIdx;
 		}
@@ -287,7 +307,9 @@ public class MCTSNode {
 		int opponentMoveIdx = getOpponentIdxFromChildIdx(selectedIdx);
 
 		this.playerUtil.set(playerMoveIdx, this.playerUtil.get(playerMoveIdx) + bpr);
+		this.playerHeur.set(playerMoveIdx, this.playerHeur.get(playerMoveIdx) + heur);
 		this.opponentUtil.set(opponentMoveIdx, this.opponentUtil.get(opponentMoveIdx) + bpr);
+		this.opponentHeur.set(opponentMoveIdx, this.opponentHeur.get(opponentMoveIdx) + heur);
 		this.playerVisits.set(playerMoveIdx, this.playerVisits.get(playerMoveIdx) + 1);
 		this.opponentVisits.set(opponentMoveIdx, this.opponentVisits.get(opponentMoveIdx) + 1);
 		this.combinedMoveVisits.set(selectedIdx, this.combinedMoveVisits.get(selectedIdx) + 1);

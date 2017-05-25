@@ -104,8 +104,8 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		// hl.add(new HeuristicOpponentFreedom(getStateMachine(),
 		// HeuristicFreedom.Type.FOCUS));
 
-		weights.add(0.60);
-		weights.add(0.30);
+		weights.add(0.80);
+		weights.add(0.10);
 		// weights.add(0.10);
 		weights.add(0.10);
 		// weights.add(0.10);
@@ -187,7 +187,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
 		for (CachedStateMachine machine : this.factoredMachines) {
 			this.currNodes.add(new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT,
-					new HashMap<MachineState, MCTSNode>()));
+					new HashMap<MachineState, MCTSNode>(), this.h));
 		}
 		long depthChargeStart = System.currentTimeMillis();
 		try {
@@ -398,7 +398,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				if (currNode == null) {
 					DebugLog.output("Could not find node in search tree - creating new MCTS tree");
 					currNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT,
-							new HashMap<MachineState, MCTSNode>());
+							new HashMap<MachineState, MCTSNode>(), this.h);
 				}
 
 				this.currNodes.set(i, currNode);
