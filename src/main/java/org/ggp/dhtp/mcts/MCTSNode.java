@@ -317,9 +317,7 @@ public class MCTSNode {
 			for (int i = 0; i < numOpponentMoves; i++) {
 				if (System.currentTimeMillis() > turnTimeout)
 					return -1;
-				if (children.get(numOpponentMoves * bestPlayerIdx + i).isFullyExplored) {
-					continue;
-				}
+
 				if (first) {
 					DebugLog.output("Calculating selection score for child " + opponentMoves.get(i).toString());
 				}
