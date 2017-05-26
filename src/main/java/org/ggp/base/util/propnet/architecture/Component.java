@@ -33,6 +33,8 @@ public abstract class Component implements Serializable
     public boolean isInput = false;
     public boolean inQueue = false;
     public int propNetId = 0;
+    public int numOutputs=0;
+    public int numInputs=0;
 
     /**
      * Creates a new Component with no inputs or outputs.
@@ -44,6 +46,8 @@ public abstract class Component implements Serializable
         this.outputs = new HashSet<Component>();
         this.outputArray = new ArrayList<Component>();
     }
+
+    public abstract boolean getPropValue();
 
     /**
      * Adds a new input.
@@ -69,6 +73,7 @@ public abstract class Component implements Serializable
     {
     	if(outputs.remove(output)){
     		outputArray.remove(output);
+    		numOutputs--;
     	}
     }
 
@@ -76,12 +81,14 @@ public abstract class Component implements Serializable
     {
 		inputs.clear();
 		inputArray.clear();
+		numInputs = 0;
 	}
 
 	public void removeAllOutputs()
 	{
 		outputs.clear();
 		outputArray.clear();
+		numOutputs = 0;
 	}
 
     /**
@@ -94,6 +101,7 @@ public abstract class Component implements Serializable
     {
         if(outputs.add(output)){
         	outputArray.add(output);
+        	numOutputs++;
         }
     }
 

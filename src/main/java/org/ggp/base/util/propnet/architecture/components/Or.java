@@ -27,4 +27,10 @@ public final class Or extends Component
 	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
 		return new Or();
 	}
+
+	@Override
+	public boolean getPropValue() {
+		// TODO Auto-generated method stub
+		return numTrue != 0;
+	}
 }

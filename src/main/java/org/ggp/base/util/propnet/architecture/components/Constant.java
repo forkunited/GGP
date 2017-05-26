@@ -49,4 +49,10 @@ public final class Constant extends Component
 	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
 		return new Constant(this.value);
 	}
+
+	@Override
+	public boolean getPropValue() {
+		// TODO Auto-generated method stub
+		return getValue();
+	}
 }

@@ -35,4 +35,10 @@ public final class Transition extends Component
 	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
 		return new Transition();
 	}
+
+	@Override
+	public boolean getPropValue() {
+		// TODO Auto-generated method stub
+		return state;
+	}
 }

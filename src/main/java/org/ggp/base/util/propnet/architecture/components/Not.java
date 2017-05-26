@@ -24,4 +24,10 @@ public final class Not extends Component
 	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
 		return new Not();
 	}
+
+	@Override
+	public boolean getPropValue() {
+		// TODO Auto-generated method stub
+		return !getSingleInput().state;
+	}
 }

@@ -87,6 +87,17 @@ public class Proposition extends Component
 	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
 		Proposition prop = new Proposition(this.name);
 		prop.value = this.value;
+		prop.isBase = this.isBase;
+		prop.isInput = this.isInput;
 		return prop;
+	}
+
+	@Override
+	public boolean getPropValue() {
+		// TODO Auto-generated method stub
+		if(isBase || isInput || getInputArray().size() == 0){
+			return value;
+		}
+		return getSingleInput().state;
 	}
 }

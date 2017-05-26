@@ -111,7 +111,7 @@ public final class PropNet
 	private ArrayList<Component> inputComponentSet;
 	public LinkedList<Component> toProcess;
 
-	private BitSet baseBits, setBits, inputBits, transitionBits, constantBits;
+	private BitSet baseBits, setBits, inputBits, transitionBits, constantBits, updatedBits;
 	private ArrayList<Component> componentList;
 
 	public void addComponent(Component c)
@@ -157,6 +157,7 @@ public final class PropNet
 		this.inputBits = null;
 		this.transitionBits = null;
 		this.constantBits = null;
+		this.updatedBits = null;
 	}
 
 
@@ -175,6 +176,7 @@ public final class PropNet
 			this.inputBits = new BitSet(componentList.size());
 			this.transitionBits = new BitSet(componentList.size());
 			this.constantBits = new BitSet(componentList.size());
+			this.updatedBits = new BitSet(componentList.size());
 			modified = true;
 			baseNew = true;
 		}
@@ -182,6 +184,7 @@ public final class PropNet
 			boolean componentSet = propGetComponentState(c);
 			if( componentSet != this.setBits.get(i)){
 				this.setBits.set(i, componentSet);
+				this.updatedBits.set(i);
 				if (verbose) {
 					DebugLog.output("State at "+i + " doesn't match");
 					DebugLog.output(c.toString());
@@ -256,14 +259,16 @@ public final class PropNet
 	}
 
 
-
-
 	public ArrayList<Component> getComponentList(){
 		return componentList;
 	}
 
 	public BitSet getComponentBits(){
 		return setBits;
+	}
+
+	public BitSet getUpdatedBits(){
+		return updatedBits;
 	}
 
 	public BitSet getBaseBits(){

@@ -127,7 +127,6 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		this.propNetMachine.getPropNet().renderToFile("/home/vk/0.dot");
 
 		long factorTimeout = (long) (FACTOR_SAFETY_MARGIN * (timeout - System.currentTimeMillis()))
 				+ System.currentTimeMillis();
@@ -155,6 +154,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				for (int i = 0; i < propNets.size(); i++) {
 					PropNet propNet = propNets.get(i);
 					SamplePropNetStateMachine factoredMachine = new SamplePropNetStateMachine();
+					propNet.updateBitSets();
 					factoredMachine.initialize(propNet); // This "initialize"
 															// thing
 															// is annoying. But

@@ -251,7 +251,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     		return initialInternalState;
     	}
 
-    	return convertToInternal(getInitialState());
+    	this.initialInternalState =  convertToInternal(getInitialState());
+
+    	return this.initialInternalState;
     }
 
     /**
@@ -408,9 +410,11 @@ public class SamplePropNetStateMachine extends StateMachine {
 
         		baseProp.setValue(true);
         		propNet.getComponentBits().set(baseProp.propNetId, true);
+        		propNet.getUpdatedBits().set(baseProp.propNetId, true);
     		} else {
         		baseProp.setValue(false);
     			propNet.getComponentBits().set(baseProp.propNetId, false);
+    			propNet.getUpdatedBits().set(baseProp.propNetId, true);
     		}
         }
 

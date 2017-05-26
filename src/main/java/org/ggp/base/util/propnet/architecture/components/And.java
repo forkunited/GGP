@@ -27,4 +27,10 @@ public final class And extends Component
 	public Component cloneHelper(Set<Component> filter, Map<Component, Component> oldToNew) {
 		return new And();
 	}
+
+	@Override
+	public boolean getPropValue() {
+		// TODO Auto-generated method stub
+		return numTrue == getInputArray().size();
+	}
 }

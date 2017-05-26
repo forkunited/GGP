@@ -72,12 +72,14 @@ public class PropNetForwardPropUtils {
 				if(p.state == false){
 					p.setValue(true);
 					propNet.getComponentBits().set(p.propNetId, true);
+					propNet.getUpdatedBits().set(p.propNetId, true);
 					modified = true;
 				}
 			} else {
 				if(p.state == true){
 					p.setValue(false);
 					propNet.getComponentBits().set(p.propNetId, false);
+					propNet.getUpdatedBits().set(p.propNetId, true);
 					modified = true;
 				}
 			}
@@ -115,7 +117,11 @@ public class PropNetForwardPropUtils {
 		while (!toProcess.isEmpty()) {
 			Component prop = toProcess.poll();
 			prop.inQueue = false;
-			boolean newState = propNet.propGetComponentState(prop);
+			boolean newState = prop.getPropValue();
+			//if(newState != propNet.propGetComponentState(prop)){
+			//	System.err.println(prop.toString());
+			//	throw new UnsupportedOperationException("Boo");
+			//}
 			if (!prop.initialized || prop.state != newState) {
 				prop.state = newState;
 				for (Component c : prop.getOutputArray()) {
@@ -163,20 +169,23 @@ public class PropNetForwardPropUtils {
 
 		Proposition init = propNet.getInitProposition();
 
-		BitSet toProcess = new BitSet(propNet.getComponentList().size());
+		BitSet toProcess = propNet.getUpdatedBits();
 
-		toProcess.or(propNet.getBaseBits());
-		toProcess.or(propNet.getInputBits());
-		toProcess.or(propNet.getConstantBits());
-		toProcess.or(propNet.getTransitionBits());
-		toProcess.set(init.propNetId, true);
+		//toProcess.or(propNet.getBaseBits());
+		//toProcess.or(propNet.getInputBits());
+		//toProcess.or(propNet.getConstantBits());
+		//toProcess.or(propNet.getTransitionBits());
+		//toProcess.set(init.propNetId, true);
 
 		while (!toProcess.isEmpty()) {
 			int i = toProcess.nextSetBit(0);
 			toProcess.clear(i);
 			Component prop = propNet.getComponentList().get(i);
 			//prop.inQueue = false;
-			boolean newState = propNet.propGetComponentState(prop);
+			boolean newState = prop.getPropValue();
+			//if(newState != propNet.propGetComponentState(prop)){
+			//	throw new UnsupportedOperationException("Baa");
+			//}
 			if(propNet.getComponentBits().get(prop.propNetId) != newState){
 				propNet.getComponentBits().set(prop.propNetId, newState);
 			}
@@ -212,6 +221,21 @@ public class PropNetForwardPropUtils {
 							((Or) c).numTrue = actualNumTrue;
 						} else {
 							((Or) c).numTrue += delta;
+						}
+					} else if (c.numOutputs == 1 && c.numInputs == 1){
+						while(c.numOutputs == 1 && c.numInputs == 1){ //skip forward through linear chain
+							boolean st = c.getPropValue();
+							if(propNet.getComponentBits().get(c.propNetId) != st){
+								propNet.getComponentBits().set(c.propNetId, st);
+							}
+							toProcess.clear(c.propNetId);
+							if (!c.initialized || c.state != st) {
+								c.state = st;
+								propNet.getComponentBits().set(c.propNetId, st);
+								c = c.getSingleOutput();
+							} else {
+								break;
+							}
 						}
 					}
 					// System.out.println("Adding to processing queue");
@@ -266,6 +290,7 @@ public class PropNetForwardPropUtils {
 				//System.out.println("Updating state at "+i);
 				((Proposition)c).setValue(stateToSet.get(i));
 				propNet.getComponentBits().set(i, stateToSet.get(i));
+				propNet.getUpdatedBits().set(i, true);
 				modified = true;
 			}
 
