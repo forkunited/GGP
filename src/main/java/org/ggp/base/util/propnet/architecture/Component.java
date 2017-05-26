@@ -32,6 +32,7 @@ public abstract class Component implements Serializable
     public boolean isBase = false;
     public boolean isInput = false;
     public boolean inQueue = false;
+    public int propNetId = 0;
 
     /**
      * Creates a new Component with no inputs or outputs.

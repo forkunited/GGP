@@ -66,7 +66,6 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 		while(System.currentTimeMillis() < limit){
 			machine.performDepthCharge(state, new int[1]);
 			numDepthCharges++;
-			break;
 		}
 		long mctsMs = System.currentTimeMillis() - mctsStart;
 		double dcps = 1000.0*((double)numDepthCharges)/mctsMs;

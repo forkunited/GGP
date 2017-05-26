@@ -127,7 +127,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		// this.propNetMachine.getPropNet().renderToFile("/home/vk/0.dot");
+		this.propNetMachine.getPropNet().renderToFile("/home/vk/0.dot");
 
 		long factorTimeout = (long) (FACTOR_SAFETY_MARGIN * (timeout - System.currentTimeMillis()))
 				+ System.currentTimeMillis();

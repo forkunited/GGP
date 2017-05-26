@@ -82,7 +82,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     private boolean isTerminalInternal(InternalMachineState state) {
     	//System.out.println("Is terminal");
     	if(PropNetForwardPropUtils.markBasesInternal(state, propNet)){
-    		PropNetForwardPropUtils.forwardProp(propNet);
+    		PropNetForwardPropUtils.forwardPropInternal(propNet);
     	}
         return PropNetForwardPropUtils.propMarkP(propNet.getTerminalProposition(), propNet);
     }
@@ -111,10 +111,8 @@ public class SamplePropNetStateMachine extends StateMachine {
     private InternalMachineState performDepthChargeInternal(InternalMachineState state, final int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
         int nDepth = 0;
         while(!isTerminalInternal(state)) {
-        	System.out.println("Performing internal depth charge");
             nDepth++;
             List<Move> m = getRandomJointMoveInternal(state);
-            System.out.println("Picking move " +m.toString());
             state = getNextStateInternal(state, m);
         }
         if(theDepth != null)
@@ -200,12 +198,11 @@ public class SamplePropNetStateMachine extends StateMachine {
     private int getGoalInternal(InternalMachineState state, Role role)
             throws GoalDefinitionException {
 
-    	PropNetForwardPropUtils.markBasesInternal(state, propNet, true);
-    	PropNetForwardPropUtils.forwardProp(propNet);
+    	PropNetForwardPropUtils.markBasesInternal(state, propNet);
+    	PropNetForwardPropUtils.forwardPropInternal(propNet);
         Set<Proposition> goalProps = propNet.getGoalPropositions().get(role);
         Proposition pMatch = null;
         for (Proposition p : goalProps) {
-        	System.out.println("Checking goal "+p.getName().toString());
         	if (PropNetForwardPropUtils.propMarkP(p, propNet)) {
         		if (pMatch != null) {
         			throw new GoalDefinitionException(state, role);
@@ -254,17 +251,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     		return initialInternalState;
     	}
 
-        Proposition init = propNet.getInitProposition();
-        init.setValue(true);
-        PropNetForwardPropUtils.forwardProp(propNet);
-        /* Propagate to all base propositions */
-        for (Proposition baseProp : propNet.getBasePropositions().values()) {
-        	/* Transition.getValue() returns true if INIT feeds into Transition */
-        	baseProp.setValue(baseProp.getSingleInput().getValue());
-        }
-        init.setValue(false);
-        this.initialInternalState =  getInternalMachineState(); //TODO This can be optimized
-        return this.initialInternalState;
+    	return convertToInternal(getInitialState());
     }
 
     /**
@@ -346,7 +333,7 @@ public class SamplePropNetStateMachine extends StateMachine {
             throws MoveDefinitionException {
     	//System.out.println("Get Legal moves");
     	if(PropNetForwardPropUtils.markBasesInternal(state, propNet)){
-    		PropNetForwardPropUtils.forwardProp(propNet);
+    		PropNetForwardPropUtils.forwardPropInternal(propNet);
     	}
         Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
         ArrayList<Move> moves = new ArrayList<Move>();
@@ -409,9 +396,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     	//System.out.println("Compute next state");
 
     	boolean basesMod = PropNetForwardPropUtils.markBasesInternal(state, propNet);
-    	boolean axnsMod = PropNetForwardPropUtils.markActions(toDoes(moves), propNet); /* TODO toDoes() can be optimized */
+    	boolean axnsMod = PropNetForwardPropUtils.markActionsInternal(toDoes(moves), propNet); /* TODO toDoes() can be optimized */
     	if(basesMod || axnsMod){
-    		PropNetForwardPropUtils.forwardProp(propNet);
+    		PropNetForwardPropUtils.forwardPropInternal(propNet);
     	}
 
     	/* Update bases */
@@ -420,14 +407,15 @@ public class SamplePropNetStateMachine extends StateMachine {
     		if (PropNetForwardPropUtils.propMarkP(baseProp.getSingleInput().getSingleInput(), propNet)) {
 
         		baseProp.setValue(true);
+        		propNet.getComponentBits().set(baseProp.propNetId, true);
     		} else {
-
         		baseProp.setValue(false);
+    			propNet.getComponentBits().set(baseProp.propNetId, false);
     		}
         }
 
-    	PropNetForwardPropUtils.forwardProp(propNet);
-    	return getInternalMachineState(); /* TODO this can be optimized */
+    	PropNetForwardPropUtils.forwardPropInternal(propNet);
+    	return new InternalMachineState(propNet.getComponentBits()); /* TODO this can be optimized */
     }
 
 
@@ -536,7 +524,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     }
 
 
-    public InternalMachineState getInternalMachineState()
+    private InternalMachineState getInternalMachineState()
     {
     	propNet.updateBitSets();
         return new InternalMachineState(propNet.getComponentBits());

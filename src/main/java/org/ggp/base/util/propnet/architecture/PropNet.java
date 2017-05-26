@@ -27,6 +27,7 @@ import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.architecture.components.Transition;
 import org.ggp.base.util.statemachine.Role;
+import org.ggp.dhtp.util.DebugLog;
 
 
 /**
@@ -110,8 +111,7 @@ public final class PropNet
 	private ArrayList<Component> inputComponentSet;
 	public LinkedList<Component> toProcess;
 
-	private BitSet baseBits;
-	private BitSet setBits;
+	private BitSet baseBits, setBits, inputBits, transitionBits, constantBits;
 	private ArrayList<Component> componentList;
 
 	public void addComponent(Component c)
@@ -136,6 +136,7 @@ public final class PropNet
 		this.components = components;
 		componentList = new ArrayList<Component>();
 		for(Component c : components){
+			c.propNetId = componentList.size();
 			componentList.add(c);
 		}
 		this.propositions = recordPropositions();
@@ -151,25 +152,109 @@ public final class PropNet
 		this.baseComponentSet = recordBaseComponentSet();
 		this.inputComponentSet = recordInputComponentSet();
 		this.toProcess = new LinkedList<Component>();
-		this.baseBits = new BitSet();
-		this.setBits = new BitSet();
+		this.baseBits = null;
+		this.setBits = null;
+		this.inputBits = null;
+		this.transitionBits = null;
+		this.constantBits = null;
 	}
 
-	public void updateBitSets(){
+
+	public boolean updateBitSets(){
+		return updateBitSets(false);
+	}
+
+	public boolean updateBitSets(boolean verbose){
 		int i =0;
-		this.setBits = new BitSet(componentList.size());
-		this.baseBits = new BitSet(componentList.size());
+		boolean modified = false;
+		boolean baseNew = false;
+		if(setBits == null){
+			System.out.println("Creating new list");
+			this.setBits = new BitSet(componentList.size());
+			this.baseBits = new BitSet(componentList.size());
+			this.inputBits = new BitSet(componentList.size());
+			this.transitionBits = new BitSet(componentList.size());
+			this.constantBits = new BitSet(componentList.size());
+			modified = true;
+			baseNew = true;
+		}
 		for(Component c : componentList){
-			if(c.getValue()){
-				this.setBits.set(i);
+			boolean componentSet = propGetComponentState(c);
+			if( componentSet != this.setBits.get(i)){
+				this.setBits.set(i, componentSet);
+				if (verbose) {
+					DebugLog.output("State at "+i + " doesn't match");
+					DebugLog.output(c.toString());
+					DebugLog.output("Input:");
+					DebugLog.output(c.getSingleInput().toString());
+				}
+				modified = true;
 			}
 
-			if(c.isBase){
-				this.baseBits.set(i);
+			if(baseNew){
+				if(c.isBase ){
+					this.baseBits.set(i);
+				} else if (c.isInput){
+					this.inputBits.set(i);
+				} else if (c instanceof Transition ){
+					this.transitionBits.set(i);
+				} else if (c instanceof Constant){
+					this.constantBits.set(i);
+				}
 			}
 			i++;
 		}
+		return modified;
 	}
+
+
+	public boolean propGetComponentState(Component prop) {
+		Component Init = this.getInitProposition();
+		if (prop.isBase) {
+			// if(prop.getValue()){
+			// System.out.println("Base prop: ");
+			// System.out.println(prop.getValue() + prop.toString());
+			// }
+			return prop.getValue();
+		} else if (prop.isInput) {
+			// System.out.println("Input prop: ");
+			// System.out.println(prop.toString());
+			return prop.getValue();
+		} else if (prop == Init) {
+			// System.out.println("Init prop: ");
+			// System.out.println(prop.toString());
+			return prop.getValue();
+		} else if (prop instanceof Proposition) {
+			// System.out.println("View prop: ");
+			// System.out.println(prop.toString());
+			return prop.getSingleInput().state;
+		} else if (prop instanceof And) {
+			// System.out.println("Conjunction: ");
+			// System.out.println(prop.toString());
+			return ((And) prop).numTrue == prop.getInputArray().size();
+		} else if (prop instanceof Or) {
+			// System.out.println("Disjunction: ");
+			// System.out.println(prop.toString());
+			return ((Or) prop).numTrue != 0;
+		} else if (prop instanceof Not) {
+			// System.out.println("Inversion: ");
+			// System.out.println(prop.toString());
+			return !prop.getSingleInput().state;
+		} else if (prop instanceof Transition) {
+			// System.out.println("Transition: ");
+			// System.out.println(prop.toString());
+			// assert(false); // This branch should never be taken, as base
+			// props are base case
+			return prop.state;
+		} else {
+			// System.out.println("Constant prop: ");
+			// System.out.println(prop.toString());
+			assert (prop instanceof Constant);
+			return prop.getValue();
+		}
+
+	}
+
 
 
 
@@ -183,6 +268,18 @@ public final class PropNet
 
 	public BitSet getBaseBits(){
 		return baseBits;
+	}
+
+	public BitSet getConstantBits(){
+		return constantBits;
+	}
+
+	public BitSet getInputBits(){
+		return inputBits;
+	}
+
+	public BitSet getTransitionBits(){
+		return transitionBits;
 	}
 
 	private ArrayList<Component> recordBaseComponentSet() {
