@@ -1,7 +1,9 @@
 package org.ggp.dhtp.machine;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
@@ -39,19 +41,21 @@ public class OptimizingProverStateMachine extends ProverStateMachine
     }
 
     private List<Gdl> reorderRules(List<Gdl> description){
+    	List<GdlRule> newListR = new ArrayList<GdlRule>();
     	List<Gdl> newList = new ArrayList<Gdl>();
     	for(Gdl g : description){
     		if(g instanceof GdlRule){
     			GdlRule gdr = (GdlRule)g;
     			gdr = pruneSubgoals(gdr);
     			gdr = reorderRule(gdr);
-    			newList.add(gdr);
+    			newListR.add(gdr);
     		} else {
     			newList.add(g);
     		}
 
     	}
-
+    	newListR = pruneRules(newListR);
+    	newList.addAll(newListR);
     	return newList;
     }
 
@@ -146,8 +150,8 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 	}
 
 	private GdlRule pruneSubgoals(GdlRule g){
-		System.out.println(">>RULE<<");
-		System.out.println(g.getHead().toString());
+		//System.out.println(">>RULE<<");
+		//System.out.println(g.getHead().toString());
 		List<GdlVariable> vars = getVars(g.getHead());
 		List<GdlLiteral> newLits = new ArrayList<GdlLiteral>();
 		List<GdlLiteral> remainingLits = new ArrayList<GdlLiteral>(g.getBody());
@@ -221,7 +225,7 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 						}
 
 						if(canProve){
-							System.out.println("Can use + "+factRel.toString()+ " to prove "+goalRel.toString());
+							//System.out.println("Can use + "+factRel.toString()+ " to prove "+goalRel.toString());
 							//System.out.println("GV contains");
 							for(GdlVariable gvr : gv){
 							//	System.out.println(gvr);
@@ -272,11 +276,13 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 	}
 
 	private List<GdlRule> pruneRules (List<GdlRule> rules){
+		System.out.println("Pruning rules");
 		List<GdlRule> newRules = new ArrayList<GdlRule>();
 		List<GdlRule> oldRules = new ArrayList<GdlRule>(rules);
 
 		while(!oldRules.isEmpty()){
 			GdlRule ruleToCheck = oldRules.remove(0);
+			//System.out.println("Checking rule " + ruleToCheck.toString());
 			if(!isSubsumed(ruleToCheck,newRules) && !isSubsumed(ruleToCheck, oldRules)){
 				newRules.add(ruleToCheck);
 			}
@@ -287,7 +293,9 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 
 	private boolean isSubsumed(GdlRule candidate, List<GdlRule> rules){
 		for(GdlRule rule : rules){
+			//System.out.println("Checking "+rule.toString() + " against " + candidate.toString());
 			if(subsumes(rule, candidate)){
+				System.out.println("Candidate "+candidate.toString() + " is subsumed by "+ rule.toString());
 				return true;
 			}
 		}
@@ -298,7 +306,156 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 			return true;
 		}
 
+		Map<GdlVariable, GdlVariable> mapping = getMapping(rule.getHead(), candidate.getHead(), new HashMap<GdlVariable, GdlVariable>());
+		if(mapping != null){
+			//System.out.println("Initial call to getMapping is not null ");
+			return subsumesExp(rule.getBody(), candidate.getBody(), mapping);
+		}
 		return false;
 
 	}
+
+	private boolean subsumesExp(List<GdlLiteral> ruleLits, List<GdlLiteral> candidateLits, Map<GdlVariable, GdlVariable> mapping) {
+		if(candidateLits.size() == 0){
+			return true;
+		}
+		List<GdlLiteral> newCandidateLits = new ArrayList<GdlLiteral>(candidateLits);
+		GdlLiteral candidateLit = newCandidateLits.remove(0);
+		for(int i = 0; i < ruleLits.size(); i++){
+			Map<GdlVariable, GdlVariable> newMapping = getMapping(ruleLits.get(i), candidateLit, mapping);
+			if(newMapping != null && subsumesExp(ruleLits, newCandidateLits, newMapping)){
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private Map<GdlVariable, GdlVariable> getMapping(GdlLiteral ruleLit, GdlLiteral candidateLit,  Map<GdlVariable, GdlVariable> oldMapping){
+		Map<GdlVariable, GdlVariable> mapping = new HashMap<GdlVariable, GdlVariable>(oldMapping);
+		if(candidateLit instanceof GdlDistinct){
+			if(ruleLit instanceof GdlDistinct){
+				GdlDistinct ruleDist = (GdlDistinct)ruleLit;
+				GdlDistinct candidateDist = (GdlDistinct)candidateLit;
+				Map<GdlVariable, GdlVariable> newMapping = getMapping(ruleDist.getArg1(), candidateDist.getArg1(), mapping);
+				if(newMapping == null){
+					return null;
+				}
+				mapping.putAll(newMapping);
+				newMapping = getMapping(ruleDist.getArg2(), candidateDist.getArg2(), mapping);
+				if(newMapping == null){
+					return null;
+				}
+				mapping.putAll(newMapping);
+				return mapping;
+			} else {
+				return null;
+			}
+		} else if(candidateLit instanceof GdlNot){
+			if(ruleLit instanceof GdlNot){
+				GdlNot ruleNot = (GdlNot)ruleLit;
+				GdlNot candidateNot = (GdlNot)candidateLit;
+				Map<GdlVariable, GdlVariable> newMapping = getMapping(ruleNot.getBody(), candidateNot.getBody(), mapping);
+				if(newMapping == null){
+					return null;
+				}
+				mapping.putAll(newMapping);
+				return mapping;
+			} else {
+				return null;
+			}
+		} else if (candidateLit instanceof GdlOr){
+			if(ruleLit instanceof GdlOr){
+				GdlOr ruleOr = (GdlOr)ruleLit;
+				GdlNot candidateOr = (GdlNot)candidateLit;
+				return null; //TODO: don't handle for now
+			} else {
+				return null;
+			}
+		} else if (candidateLit instanceof GdlRelation){
+			if(ruleLit instanceof GdlRelation){
+				GdlRelation ruleRel= (GdlRelation)ruleLit;
+				GdlRelation candidateRel = (GdlRelation)candidateLit;
+				//System.out.println("Both relations");
+				if((!ruleRel.getName().equals(candidateRel.getName())) || (ruleRel.arity() != candidateRel.arity())){
+					return null;
+				}
+				//System.out.println("Relations " + ruleRel.toString() +  " and " + candidateRel.toString() + " have same name and arity");
+				for(int i = 0; i < ruleRel.arity(); i++){
+					Map<GdlVariable, GdlVariable> newMapping = getMapping(ruleRel.get(i), candidateRel.get(i), mapping);
+
+					if(newMapping == null){
+						return null;
+					}
+					mapping.putAll(newMapping);
+				}
+				return mapping;
+			} else {
+				return null;
+			}
+		}  else if (candidateLit instanceof GdlProposition){
+			if(ruleLit instanceof GdlProposition){
+				GdlProposition ruleProp = (GdlProposition)ruleLit;
+				GdlProposition candidateProp = (GdlProposition)candidateLit;
+				if(ruleProp.getName().equals(candidateProp.getName())){
+					return mapping;
+				} else {
+					return null;
+				}
+			} else {
+				return null;
+			}
+		} else {
+			return null;
+		}
+	}
+
+
+	private Map<GdlVariable, GdlVariable> getMapping(GdlTerm ruleTerm, GdlTerm candidateTerm,
+			Map<GdlVariable, GdlVariable> inMapping) {
+		Map<GdlVariable, GdlVariable> newMapping = new HashMap<GdlVariable, GdlVariable>(inMapping);
+		if(ruleTerm instanceof GdlConstant){
+			if(candidateTerm instanceof GdlConstant && ((GdlTerm)candidateTerm).equals((GdlTerm)ruleTerm)){
+				return newMapping;
+			}else {
+				return null;
+			}
+		} else if (ruleTerm instanceof GdlVariable){
+			if(candidateTerm instanceof GdlVariable){
+				if(newMapping.containsKey((GdlVariable)candidateTerm)){
+					if(newMapping.get((GdlVariable)candidateTerm).equals((GdlVariable)ruleTerm)){
+						return newMapping;
+					} else {
+						return null;
+					}
+				} else {
+					newMapping.put((GdlVariable)candidateTerm, (GdlVariable)ruleTerm);
+					return newMapping;
+				}
+			} else {
+				return null;
+			}
+		} else if (ruleTerm instanceof GdlFunction){
+			if(candidateTerm instanceof GdlFunction){
+				GdlFunction rulefr = (GdlFunction)ruleTerm;
+				GdlFunction candfr = (GdlFunction)candidateTerm;
+				if(rulefr.getName().equals(candfr.getName()) && rulefr.arity() == candfr.arity()){
+					for(int i = 0; i < rulefr.arity(); i++){
+						Map<GdlVariable, GdlVariable> subMapping = getMapping(rulefr.get(i), candfr.get(i), newMapping);
+						if(subMapping != null){
+							newMapping.putAll(subMapping);
+						} else {
+							return null;
+						}
+					}
+					return newMapping;
+				} else {
+					return null;
+				}
+			} else {
+				return null;
+			}
+		}
+		return null;
+	}
+
 }
