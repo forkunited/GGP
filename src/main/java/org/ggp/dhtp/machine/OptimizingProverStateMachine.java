@@ -133,7 +133,7 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 		List<GdlVariable> boundVars = new ArrayList<GdlVariable>();
 		List<GdlVariable> foundVars = new ArrayList<GdlVariable>();
 		unboundVars(gs, foundVars, boundVars);
-		return boundVars;
+		return foundVars;
 	}
 
 	private void varsexp(GdlLiteral gl, List<GdlVariable> vars){
@@ -172,7 +172,7 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 		for(GdlLiteral gll : synthRule){
 			varsexp(gll, boundVars);
 		}
-		return compfindp(gl, synthRule, vars);
+		return compfindp(gl, synthRule, boundVars);
 	}
 
 	private boolean compfindp(GdlLiteral goal, List<GdlLiteral> facts, List<GdlVariable> gv){
@@ -208,10 +208,12 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 					GdlRelation goalRel = (GdlRelation)goal;
 					if(factRel.getName().equals(goalRel.getName()) && factRel.arity() == goalRel.arity()){
 						boolean canProve = true;
+						//System.out.println("Checking + "+factRel.toString()+ " against "+goalRel.toString());
 
 						for(int i = 0 ; i < factRel.arity(); i ++){
 							GdlTerm fdt = factRel.get(i);
 							GdlTerm gdt = goalRel.get(i);
+							//System.out.println("Checking + "+fdt.toString()+ " against "+gdt.toString());
 							if(!canProveTerm(gdt, gv, fdt)){
 								canProve = false;
 								break;
@@ -219,6 +221,11 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 						}
 
 						if(canProve){
+							System.out.println("Can use + "+factRel.toString()+ " to prove "+goalRel.toString());
+							//System.out.println("GV contains");
+							for(GdlVariable gvr : gv){
+							//	System.out.println(gvr);
+							}
 							return true;
 						}
 					}
@@ -262,5 +269,36 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 			}
 		}
 		return true;
+	}
+
+	private List<GdlRule> pruneRules (List<GdlRule> rules){
+		List<GdlRule> newRules = new ArrayList<GdlRule>();
+		List<GdlRule> oldRules = new ArrayList<GdlRule>(rules);
+
+		while(!oldRules.isEmpty()){
+			GdlRule ruleToCheck = oldRules.remove(0);
+			if(!isSubsumed(ruleToCheck,newRules) && !isSubsumed(ruleToCheck, oldRules)){
+				newRules.add(ruleToCheck);
+			}
+		}
+
+		return newRules;
+	}
+
+	private boolean isSubsumed(GdlRule candidate, List<GdlRule> rules){
+		for(GdlRule rule : rules){
+			if(subsumes(rule, candidate)){
+				return true;
+			}
+		}
+		return false;
+	}
+	private boolean subsumes(GdlRule rule, GdlRule candidate){
+		if(rule.equals(candidate)){
+			return true;
+		}
+
+		return false;
+
 	}
 }
