@@ -42,7 +42,9 @@ public class OptimizingProverStateMachine extends ProverStateMachine
     	List<Gdl> newList = new ArrayList<Gdl>();
     	for(Gdl g : description){
     		if(g instanceof GdlRule){
-    			GdlRule gdr = reorderRule((GdlRule)g);
+    			GdlRule gdr = (GdlRule)g;
+    			gdr = pruneSubgoals(gdr);
+    			gdr = reorderRule(gdr);
     			newList.add(gdr);
     		} else {
     			newList.add(g);
@@ -54,8 +56,8 @@ public class OptimizingProverStateMachine extends ProverStateMachine
     }
 
 	private GdlRule reorderRule(GdlRule g) {
-		System.out.println(">>RULE<<");
-		System.out.println(g.getHead().toString());
+		//System.out.println(">>RULE<<");
+		//System.out.println(g.getHead().toString());
 		List<GdlVariable> boundVars = new ArrayList<GdlVariable>();
 		List<GdlLiteral> literalsRemaining = new ArrayList<GdlLiteral>(g.getBody());
 		List<GdlLiteral> newOrder = new ArrayList<GdlLiteral>();
@@ -64,8 +66,8 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 			GdlLiteral nextToAdd = getBestForReordering(literalsRemaining, boundVars, newVars);
 			literalsRemaining.remove(nextToAdd);
 			newOrder.add(nextToAdd);
-			System.out.println("Added subgoal"+nextToAdd.toString());
-			System.out.println("It has "+newVars.size() + " new variables");
+			//System.out.println("Added subgoal"+nextToAdd.toString());
+			//System.out.println("It has "+newVars.size() + " new variables");
 			boundVars.addAll(newVars);
 		}
 
@@ -125,5 +127,140 @@ public class OptimizingProverStateMachine extends ProverStateMachine
 				unboundVars(gtt, foundVars, boundVars);
 			}
 		}
+	}
+
+	private List<GdlVariable> getVars(GdlLiteral gs){
+		List<GdlVariable> boundVars = new ArrayList<GdlVariable>();
+		List<GdlVariable> foundVars = new ArrayList<GdlVariable>();
+		unboundVars(gs, foundVars, boundVars);
+		return boundVars;
+	}
+
+	private void varsexp(GdlLiteral gl, List<GdlVariable> vars){
+		List<GdlVariable> newVars = getVars(gl);
+		for(GdlVariable gv : newVars){
+			if(!vars.contains(gv)){
+				vars.add(gv);
+			}
+		}
+	}
+
+	private GdlRule pruneSubgoals(GdlRule g){
+		System.out.println(">>RULE<<");
+		System.out.println(g.getHead().toString());
+		List<GdlVariable> vars = getVars(g.getHead());
+		List<GdlLiteral> newLits = new ArrayList<GdlLiteral>();
+		List<GdlLiteral> remainingLits = new ArrayList<GdlLiteral>(g.getBody());
+		while(!remainingLits.isEmpty()){
+			GdlLiteral gl = remainingLits.remove(0);
+			List<GdlLiteral> synthRule = new ArrayList<GdlLiteral>(newLits);
+			synthRule.addAll(remainingLits);
+			if(!pruneWorthy(synthRule, gl, vars)){
+				newLits.add(gl);
+			} else {
+				System.out.println("Pruning "+gl.toString());
+			}
+		}
+
+		GdlRule gr = new GdlRule(g.getHead(), ImmutableList.copyOf(newLits));
+
+		return gr;
+	}
+
+	private boolean pruneWorthy(List<GdlLiteral> synthRule, GdlLiteral gl, List<GdlVariable> vars) {
+		List<GdlVariable> boundVars = new ArrayList<GdlVariable>(vars);
+		for(GdlLiteral gll : synthRule){
+			varsexp(gll, boundVars);
+		}
+		return compfindp(gl, synthRule, vars);
+	}
+
+	private boolean compfindp(GdlLiteral goal, List<GdlLiteral> facts, List<GdlVariable> gv){
+		if(goal instanceof GdlNot){
+			return compfindp(((GdlNot)goal).getBody(), facts, gv);
+		} else if (goal instanceof GdlOr){
+			for(GdlLiteral gl : ((GdlOr)goal).getDisjuncts()){
+				if(!compfindp(gl, facts,gv)){
+					return false;
+				}
+			}
+			return true;
+		} else if (goal instanceof GdlDistinct){
+			GdlDistinct gdd = (GdlDistinct)goal;
+			//TODO: check
+			// both variables must be bound for us to retain this
+			for(GdlLiteral fact : facts){
+				if(fact instanceof GdlDistinct){
+					GdlDistinct factDis = (GdlDistinct)fact;
+					if(canProveTerm(gdd.getArg1(),  gv, factDis.getArg1())
+							&& canProveTerm(gdd.getArg2(),  gv, factDis.getArg2())){
+						return true;
+					}
+				}
+			}
+			return false;
+		} else if (goal instanceof GdlProposition){
+			return facts.contains(goal);
+		} else if (goal instanceof GdlRelation){
+			for(GdlLiteral fact : facts){
+				if(fact instanceof GdlRelation){
+					GdlRelation factRel = (GdlRelation)fact;
+					GdlRelation goalRel = (GdlRelation)goal;
+					if(factRel.getName().equals(goalRel.getName()) && factRel.arity() == goalRel.arity()){
+						boolean canProve = true;
+
+						for(int i = 0 ; i < factRel.arity(); i ++){
+							GdlTerm fdt = factRel.get(i);
+							GdlTerm gdt = goalRel.get(i);
+							if(!canProveTerm(gdt, gv, fdt)){
+								canProve = false;
+								break;
+							}
+						}
+
+						if(canProve){
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
+		System.out.println("Unmatched!");
+		return false;
+	}
+
+	private boolean canProveTerm(GdlTerm arg1, List<GdlVariable> gv, GdlTerm gr) {
+		if(arg1 instanceof GdlConstant){
+			if(gr instanceof GdlConstant){
+				return gr.equals(arg1);
+			}else {
+				return false;
+			}
+		} else if (arg1 instanceof GdlVariable){
+			if(gr instanceof GdlVariable){
+				return !gv.contains(arg1);
+			} else {
+				return false;
+			}
+		} else if (arg1 instanceof GdlFunction){
+			if(gr instanceof GdlFunction){
+				GdlFunction gfr = (GdlFunction)gr;
+				GdlFunction argfr = (GdlFunction)arg1;
+				if(gfr.getName().equals(argfr.getName()) && gfr.arity() == argfr.arity()){
+					for(int i = 0; i < gfr.arity(); i++){
+						if(!canProveTerm(argfr.get(i), gv, gfr.get(i))){
+							return false;
+						}
+					}
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
+		}
+		return true;
 	}
 }
