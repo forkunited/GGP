@@ -5,6 +5,7 @@ import java.util.Set;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.And;
+import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Role;
@@ -66,15 +67,62 @@ public class GoalProximityHeuristic extends Heuristic {
 			 }
 		 }
 		 if(bestProp != null){
-			 Component inputC = bestProp.getSingleInput();
-			 if(inputC instanceof And){
-				 double pctTrue = ((double)((And)inputC).numTrue) / ((double)((And)inputC).getInputArray().size());
-				 System.out.println("Pct true is:"+pctTrue);
-				 System.out.println("Returning:"+pctTrue*bestPropVal);
-				 return pctTrue * bestPropVal;
+			// System.out.println("Checking "+bestProp);
+			 Component inputC = bestProp;
+			 while((inputC instanceof Proposition )&& !inputC.isBase && !inputC.isInput){
+				 //System.out.println("Rewinding over "+inputC.toString());
+				 inputC = inputC.getSingleInput();
+				 //System.out.println("Rewound to "+inputC);
+			 }
+
+			 if(inputC instanceof Or){
+				 double estVal = 0.0;
+				 for(Component input : inputC.getInputs()){
+					 //System.out.println("Checking OR input:"+input.toString());
+					 double inputVal = getComponentContrib(input.getInputs(), bestPropVal, 0, 3, input.getValue());
+					 if(inputVal > estVal){
+						 estVal = inputVal;
+					 }
+					 break;
+				 }
+				 //System.out.println("Or Est Val:"+estVal);
+				 return estVal;
+			 }else if(inputC instanceof And){
+				 double estVal = getComponentContrib(inputC.getInputs(), bestPropVal, 0, 3, inputC.getValue());
+				 //System.out.println("And Est Val:"+estVal);
+				 return estVal;
+			 } else {
+				// System.out.println("Could not calc: input C is "+inputC);
 			 }
 		 }
 		 return this.machine.getGoal(state, role);
+	}
+
+	private double getComponentContrib(Set<Component> set, double bestPropVal, int depth, int depthLimit, boolean parentWasSet){
+		if(depth >= depthLimit){
+			//System.out.println("Hit max depth");
+			return parentWasSet ? bestPropVal : 0.0;
+		}
+		double indivContrib = bestPropVal / (double)set.size();
+		double total = 0.0;
+		for(Component c : set){
+			//System.out.println("Depth:"+depth+" Checking "+c.toString());
+			while(c instanceof Proposition && !c.isInput && !c.isBase){
+				c = c.getSingleInput();
+			}
+			if(c instanceof And && !c.getValue()){
+				total += getComponentContrib(c.getInputs(), indivContrib, depth+1, depthLimit, false);
+			} else {
+				if(c.getValue()){
+					total += indivContrib;
+					//System.out.println("Set:"+c.toString());
+				} else {
+					//System.out.println("Not set:"+c.toString());
+				}
+			}
+
+		}
+		return total;
 	}
 
 	@Override
