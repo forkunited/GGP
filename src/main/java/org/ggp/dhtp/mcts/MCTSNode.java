@@ -101,6 +101,7 @@ public class MCTSNode {
 			this.fullyExploredValue = 0;
 			this.h = h;
 			if (this.h != null) {
+				//DebugLog.output("Evaluating state using heuristic");
 				this.heurVal = h.evalState(player, state);
 			} else {
 				heurVal = 0.0;
@@ -120,7 +121,7 @@ public class MCTSNode {
 		//DebugLog.output("Exploration coefficient is " +
 		 //explorationCoefficient);
 
-		return (playerUtility + playerHeuristic / numPlayerVisits) / (numPlayerVisits)
+		return (playerUtility) / (numPlayerVisits) + playerHeuristic
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numPlayerVisits);
 	}
 
@@ -130,7 +131,7 @@ public class MCTSNode {
 		double opponentHeuristic = opponentHeur.get(opponentMoveIdx);
 		int numOpponentVisits = opponentVisits.get(opponentMoveIdx);
 
-		return -1 * (opponentUtility + opponentHeuristic / numOpponentVisits) / (numOpponentVisits)
+		return -1 * (opponentUtility) / (numOpponentVisits) - opponentHeuristic
 				// + Math.sqrt(opponentVarSum/numOpponentVisits)
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numOpponentVisits);
 	}

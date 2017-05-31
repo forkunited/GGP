@@ -81,6 +81,10 @@ public class PropNetAnalyzer {
 				if (subnet.contains(input))
 					continue;
 				toVisit.add(input);
+				if(input.isInput){
+					//DebugLog.output("Adding "+input+ " to subnet");
+					//DebugLog.output("Outputs into "+ cur);
+				}
 			}
 			/*
 			for (Component output : cur.getOutputs()) {
@@ -131,7 +135,9 @@ public class PropNetAnalyzer {
 		Set<Proposition> reachableInputComponents = new HashSet<Proposition>();
 		for (Component c : propNet.getInputComponentSet()) {
 			Proposition p = (Proposition) c;
+			//DebugLog.output("Checking if tgc contains "+p.toString());
 			if (termGoalComponents.contains(p)) {
+				//DebugLog.output("It does - adding to reachable");
 				reachableInputComponents.add(p);
 			}
 		}

@@ -141,14 +141,14 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> findActions(Role role)
             throws MoveDefinitionException {
-    	System.out.println("Find actions new");
+    	//System.out.println("Find actions new");
     	Map<GdlSentence, Proposition> inputMap = propNet.getInputPropositions();
     	HashSet<Proposition> legalProps = new HashSet<Proposition>();
     	Map<Proposition, Proposition> inputLegalMap = propNet.getLegalInputMap();
-    	System.out.println("Everything set up");
+    	//System.out.println("Everything set up");
     	for (GdlSentence sentence: inputMap.keySet()){
     		if (sentence.get(0).toString().equals(role.getName().toString())){
-    			System.out.println("Adding legal prop");
+    			//System.out.println("Adding legal prop");
     			Proposition inputProp = inputMap.get(sentence);
     			Proposition legalProp = inputLegalMap.get(inputProp);
     			if (legalProp != null) {
@@ -187,12 +187,12 @@ public class SamplePropNetStateMachine extends StateMachine {
     		PropNetForwardPropUtils.forwardProp(propNet);
     	}
         HashSet<Proposition> legalProps = new HashSet<Proposition>(propNet.getLegalPropositions().get(role));
-        DebugLog.output("There are "+legalProps.size()+ " legal props");
+       // DebugLog.output("There are "+legalProps.size()+ " legal props");
         if(legalMoves != null){
         	HashSet<Proposition> oldProps = legalProps;
         	legalProps = new HashSet<Proposition>();
 	        //DebugLog.output(legalMoves.get(role).toString());
-	        DebugLog.output("There are "+legalMoves.get(role).size()+ " legal moves");
+	       // DebugLog.output("There are "+legalMoves.get(role).size()+ " legal moves");
 	        //DebugLog.output(legalMoves.get(role).toString());
         	for(Proposition p : oldProps){
         		for(Proposition l : legalMoves.get(role)){
@@ -202,7 +202,7 @@ public class SamplePropNetStateMachine extends StateMachine {
         			}
         		}
         	}
-	        DebugLog.output("There are "+legalProps.size()+ " legal props after retain");
+	        //DebugLog.output("There are "+legalProps.size()+ " legal props after retain");
         }
 
 
@@ -434,4 +434,5 @@ public class SamplePropNetStateMachine extends StateMachine {
     public void setLegalMovesMask(Map<Role, Set<Proposition>> map){
     	this.legalMoves = map;
     }
+
 }

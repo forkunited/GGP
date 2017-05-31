@@ -30,7 +30,6 @@ import org.ggp.dhtp.util.Heuristic;
 import org.ggp.dhtp.util.HeuristicFreedom;
 import org.ggp.dhtp.util.HeuristicOpponentFreedom;
 import org.ggp.dhtp.util.HeuristicWeighted;
-import org.ggp.dhtp.util.MCSHeuristic;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class FactoredMCTSPlayer extends StateMachineGamer {
@@ -100,7 +99,9 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		List<Heuristic> hl = new ArrayList<Heuristic>();
 		List<Double> weights = new ArrayList<Double>();
 
-		hl.add(new GoalProximityHeuristic(getStateMachine()));
+		GoalProximityHeuristic gph = new GoalProximityHeuristic(getStateMachine());
+		gph.setPropNet(this.propNetMachine.getPropNet());
+		hl.add(gph);
 		hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
 		// hl.add(new HeuristicFreedom(getStateMachine(),
 		// HeuristicFreedom.Type.FOCUS));
@@ -122,7 +123,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 														// weighted heuristic
 														// after testing monte
 														// carlo search
-		this.h = new MCSHeuristic(getStateMachine());
+		//this.h = new MCSHeuristic(getStateMachine());
 		this.maxLevel = 50; // TODO Smarter here?
 		this.b = new FixedBounder(this.maxLevel);
 		this.reachedAllTerminal = false;
@@ -152,11 +153,12 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				DebugLog.output("Propnet Analyzer Start");
 				PropNetAnalyzer analyzer = new PropNetAnalyzer();
 				DebugLog.output("Propnet Analyzer factor terminal goal reachable");
-				DebugLog.output("Initial legals:"+this.propNetMachine.getPropNet().getLegalInputMap());
+				DebugLog.output("Initial legals:"+this.propNetMachine.getPropNet().getLegalInputMap().size());
 				PropNet origNet = this.propNetMachine.getPropNet();
 				PropNet clonedNet = new PropNet(origNet.getRoles(), origNet.getComponents());
 				PropNet reachablePropNet = analyzer.factorTerminalGoalReachable(clonedNet,
 						factorTimeout);
+				DebugLog.output("New legals:"+reachablePropNet.getLegalInputMap().size());
 				DebugLog.output("Propnet Analyzer factor disjunctive");
 				List<PropNet> propNets = analyzer.factorDisjunctive(reachablePropNet, factorTimeout);
 
