@@ -766,6 +766,7 @@ public final class PropNet
 		//c.removeAllOutputs();
 	}
 
+	/* Necessary for factoring terrible for external rep! */
 	public PropNet clone(Set<Component> filter) {
 		Set<Component> cloneComponents = new HashSet<Component>();
 		Map<Component, Component> oldToNew = new HashMap<Component, Component>();
