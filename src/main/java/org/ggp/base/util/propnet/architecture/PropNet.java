@@ -621,10 +621,12 @@ public final class PropNet
 		//c.removeAllOutputs();
 	}
 
-	public PropNet clone(Set<Component> filter) {
+	public PropNet clone(Set<Component> filter, Set<Component> toAdd) {
 		Set<Component> cloneComponents = new HashSet<Component>();
 		Map<Component, Component> oldToNew = new HashMap<Component, Component>();
 		Queue<Component> danglingComponents = new LinkedList<Component>();
+
+		cloneComponents.addAll(toAdd);
 		for (Component component : this.components) {
 			if (!filter.contains(component))
 				continue;

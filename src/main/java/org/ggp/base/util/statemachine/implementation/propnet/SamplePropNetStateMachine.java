@@ -9,8 +9,14 @@ import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
+import org.ggp.base.util.gdl.grammar.GdlDistinct;
+import org.ggp.base.util.gdl.grammar.GdlFunction;
+import org.ggp.base.util.gdl.grammar.GdlLiteral;
+import org.ggp.base.util.gdl.grammar.GdlPool;
 import org.ggp.base.util.gdl.grammar.GdlRelation;
+import org.ggp.base.util.gdl.grammar.GdlRule;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
+import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
@@ -24,6 +30,7 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBuilder;
 import org.ggp.dhtp.propnet.PropNetForwardPropUtils;
+import org.ggp.dhtp.util.DebugLog;
 
 
 @SuppressWarnings("unused")
@@ -35,7 +42,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     /** The player roles */
     private List<Role> roles;
     private MachineState initialState;
-
+    private Map<Role, Set<Proposition>> legalMoves;
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
@@ -45,6 +52,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     public void initialize(List<Gdl> description) {
     	//System.out.println("Initializing");
         try {
+        	description = sanitizeDistinct(description);
             initialize(OptimizingPropNetFactory.create(description));
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -154,7 +162,8 @@ public class SamplePropNetStateMachine extends StateMachine {
     	//System.out.println(moves);
     	for (Proposition p: legalProps) {
     		//System.out.println(p.toString());
-    		moves.add(getMoveFromProposition(p));
+    		Move m = getMoveFromProposition(p);
+    		moves.add(m);
     	}
     	return moves;
 
@@ -177,7 +186,27 @@ public class SamplePropNetStateMachine extends StateMachine {
     	if(PropNetForwardPropUtils.markBases(state, propNet)){
     		PropNetForwardPropUtils.forwardProp(propNet);
     	}
-        Set<Proposition> legalProps = propNet.getLegalPropositions().get(role);
+        HashSet<Proposition> legalProps = new HashSet<Proposition>(propNet.getLegalPropositions().get(role));
+        DebugLog.output("There are "+legalProps.size()+ " legal props");
+        if(legalMoves != null){
+        	HashSet<Proposition> oldProps = legalProps;
+        	legalProps = new HashSet<Proposition>();
+	        //DebugLog.output(legalMoves.get(role).toString());
+	        DebugLog.output("There are "+legalMoves.get(role).size()+ " legal moves");
+	        //DebugLog.output(legalMoves.get(role).toString());
+        	for(Proposition p : oldProps){
+        		for(Proposition l : legalMoves.get(role)){
+        			if(l.getName().equals(p.getName())){
+        				legalProps.add(p);
+        				break;
+        			}
+        		}
+        	}
+	        DebugLog.output("There are "+legalProps.size()+ " legal props after retain");
+        }
+
+
+
         ArrayList<Move> moves = new ArrayList<Move>();
     	for (Proposition p: legalProps) {
     		//System.out.println("Checking legality of " + p.toString());
@@ -353,5 +382,56 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     public PropNet getPropNet() {
     	return this.propNet;
+    }
+
+    private void sanitizeDistinctHelper(Gdl gdl, List<Gdl> in, List<Gdl> out) {
+        if (!(gdl instanceof GdlRule)) {
+            out.add(gdl);
+            return;
+        }
+        GdlRule rule = (GdlRule) gdl;
+        for (GdlLiteral lit : rule.getBody()) {
+            if (lit instanceof GdlDistinct) {
+                GdlDistinct d = (GdlDistinct) lit;
+                GdlTerm a = d.getArg1();
+                GdlTerm b = d.getArg2();
+                if (!(a instanceof GdlFunction) && !(b instanceof GdlFunction)) continue;
+                if (!(a instanceof GdlFunction && b instanceof GdlFunction)) return;
+                GdlSentence af = ((GdlFunction) a).toSentence();
+                GdlSentence bf = ((GdlFunction) b).toSentence();
+                if (!af.getName().equals(bf.getName())) return;
+                if (af.arity() != bf.arity()) return;
+                for (int i = 0; i < af.arity(); i++) {
+                    List<GdlLiteral> ruleBody = new ArrayList<>();
+                    for (GdlLiteral newLit : rule.getBody()) {
+                        if (newLit != lit) ruleBody.add(newLit);
+                        else ruleBody.add(GdlPool.getDistinct(af.get(i), bf.get(i)));
+                    }
+                    GdlRule newRule = GdlPool.getRule(rule.getHead(), ruleBody);
+                    DebugLog.output("new rule: " + newRule);
+                    in.add(newRule);
+                }
+                return;
+            }
+        }
+        for (GdlLiteral lit : rule.getBody()) {
+            if (lit instanceof GdlDistinct) {
+                DebugLog.output("distinct rule added: " + rule);
+                break;
+            }
+        }
+        out.add(rule);
+    }
+
+    private List<Gdl> sanitizeDistinct(List<Gdl> description) {
+        List<Gdl> out = new ArrayList<>();
+        for (int i = 0; i < description.size(); i++) {
+            sanitizeDistinctHelper(description.get(i), description, out);
+        }
+        return out;
+    }
+
+    public void setLegalMovesMask(Map<Role, Set<Proposition>> map){
+    	this.legalMoves = map;
     }
 }

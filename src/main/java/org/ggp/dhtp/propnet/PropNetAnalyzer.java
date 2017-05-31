@@ -5,13 +5,19 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import org.ggp.base.util.gdl.grammar.GdlConstant;
+import org.ggp.base.util.gdl.grammar.GdlProposition;
+import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
+import org.ggp.base.util.statemachine.Role;
+import org.ggp.dhtp.util.DebugLog;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class PropNetAnalyzer {
@@ -20,13 +26,13 @@ public class PropNetAnalyzer {
 
 	}
 
-	/* FIXME
-	 * Returns components reachable from the disjunct that are reachable
-	 * without passing through the other disjuncts.  Note that this assumes
-	 * that goals do not rely on conjunctions of any of the other disjuncts.  If
-	 * that happens, then the propnet may not factor entirely correctly in
-	 * that goal values of one subnet may depend on the state of other subnets.
-	 * It also assumes that there are no goals in other disconnected parts of the
+	/*
+	 * FIXME Returns components reachable from the disjunct that are reachable
+	 * without passing through the other disjuncts. Note that this assumes that
+	 * goals do not rely on conjunctions of any of the other disjuncts. If that
+	 * happens, then the propnet may not factor entirely correctly in that goal
+	 * values of one subnet may depend on the state of other subnets. It also
+	 * assumes that there are no goals in other disconnected parts of the
 	 * network.
 	 */
 	protected Set<Component> getDisjunctSubnet(PropNet propNet, Component currentDisjunct, Set<Component> disjuncts) {
@@ -34,9 +40,9 @@ public class PropNetAnalyzer {
 		Set<Component> subnet = new HashSet<Component>();
 		toVisit.add(currentDisjunct);
 
-		//DebugLog.output(currentDisjunct.getOutputs().iterator().next().toString());
-		//DebugLog.output(String.valueOf(disjuncts.contains(propNet.getInitProposition())));
-		//DebugLog.output(String.valueOf(subnet.contains(propNet.getInitProposition())));
+		// DebugLog.output(currentDisjunct.getOutputs().iterator().next().toString());
+		// DebugLog.output(String.valueOf(disjuncts.contains(propNet.getInitProposition())));
+		// DebugLog.output(String.valueOf(subnet.contains(propNet.getInitProposition())));
 
 		while (!toVisit.isEmpty()) {
 			Component cur = toVisit.remove();
@@ -47,12 +53,11 @@ public class PropNetAnalyzer {
 					continue;
 				toVisit.add(input);
 			}
-
-			for (Component output : cur.getOutputs()) {
-				if (disjuncts.contains(output) || subnet.contains(output))
-					continue;
-				toVisit.add(output);
-			}
+			/*
+			 * if(!currentDisjunct.equals(cur)){ for (Component output :
+			 * cur.getOutputs()) { if (disjuncts.contains(output) ||
+			 * subnet.contains(output)) continue; toVisit.add(output); } }
+			 */
 		}
 
 		// Is this correct to do?
@@ -61,7 +66,8 @@ public class PropNetAnalyzer {
 		return subnet;
 	}
 
-	protected Set<Component> getReachableSubnet(PropNet propNet, Set<Component> starts, long factorTimeout) throws PhaseTimeoutException {
+	protected Set<Component> getReachableSubnet(PropNet propNet, Set<Component> starts, long factorTimeout)
+			throws PhaseTimeoutException {
 		Queue<Component> toVisit = new LinkedList<Component>();
 		Set<Component> subnet = new HashSet<Component>();
 		toVisit.addAll(starts);
@@ -76,12 +82,12 @@ public class PropNetAnalyzer {
 					continue;
 				toVisit.add(input);
 			}
-
+			/*
 			for (Component output : cur.getOutputs()) {
 				if (subnet.contains(output))
 					continue;
 				toVisit.add(output);
-			}
+			}*/
 		}
 
 		// Is this correct to do?
@@ -98,11 +104,19 @@ public class PropNetAnalyzer {
 		return goals;
 	}
 
-	protected Set<Component> getLegals(PropNet propNet) {
+	protected Set<Component> getLegals(PropNet propNet, Set<Proposition> reachableInputComponents) {
 		Collection<Set<Proposition>> roleLegals = propNet.getLegalPropositions().values();
 		Set<Component> legals = new HashSet<Component>();
-		for (Set<Proposition> legalsForRole : roleLegals)
-			legals.addAll(legalsForRole);
+		for (Set<Proposition> legalsForRole : roleLegals) {
+			for (Proposition legalForRole : legalsForRole) {
+				for (Proposition c : reachableInputComponents) {
+					if (c.getName().getBody().equals(legalForRole.getName().getBody())) {
+						legals.add(legalForRole);
+					}
+				}
+			}
+		}
+		DebugLog.output("New legals size:"+legals.size());
 		return legals;
 	}
 
@@ -114,9 +128,33 @@ public class PropNetAnalyzer {
 		termGoals.addAll(goals);
 
 		Set<Component> termGoalComponents = getReachableSubnet(propNet, termGoals, factorTimeout);
-		termGoalComponents.addAll(getReachableSubnet(propNet, getLegals(propNet), factorTimeout));
+		Set<Proposition> reachableInputComponents = new HashSet<Proposition>();
+		for (Component c : propNet.getInputComponentSet()) {
+			Proposition p = (Proposition) c;
+			if (termGoalComponents.contains(p)) {
+				reachableInputComponents.add(p);
+			}
+		}
+		termGoalComponents
+				.addAll(getReachableSubnet(propNet, getLegals(propNet, reachableInputComponents), factorTimeout));
 
-		return propNet.clone(termGoalComponents);
+		int num = 0;
+		for(Component c : termGoalComponents){
+			if(c instanceof Proposition){
+				Proposition p = (Proposition)c;
+				if(p.getName().getName().getValue().equals("legal")){
+					num++;
+				}
+			}
+		}
+		DebugLog.output("Num legal props in net:"+num);
+
+		PropNet newNet = propNet.clone(termGoalComponents, new HashSet<Component>());
+		DebugLog.output("old net legal props: "+ propNet.getLegalInputMap().size());
+		DebugLog.output("New net legal props: "+ newNet.getLegalInputMap().size());
+
+
+		return newNet;
 	}
 
 	protected boolean disjunctHasInputs(PropNet propNet, Component disjunct) {
@@ -151,6 +189,19 @@ public class PropNetAnalyzer {
 		return false;
 	}
 
+	public boolean shouldConsiderDisjunctive(PropNet propNet, Role role, long factorTimeout)
+			throws PhaseTimeoutException {
+		Map<GdlSentence, Proposition> map = propNet.getBasePropositions();
+
+		List<Role> roles = Role.computeRoles(new ArrayList<GdlSentence>(propNet.getBasePropositions().keySet()));
+		for (Role nrole : roles) {
+			if (nrole.getClass().equals(role.getName())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public List<PropNet> factorDisjunctive(PropNet propNet, long factorTimeout) throws PhaseTimeoutException {
 		List<PropNet> propNets = new ArrayList<PropNet>();
 		if (!(propNet.getTerminalProposition().getSingleInput() instanceof Or)) {
@@ -158,8 +209,15 @@ public class PropNetAnalyzer {
 			return propNets;
 		}
 
-		Set<Component> legalSubnet = getReachableSubnet(propNet, getLegals(propNet), factorTimeout);
-		Set<Component> disjuncts = new HashSet<Component>(propNet.getTerminalProposition().getSingleInput().getInputs());
+		Set<Proposition> reachableInputComponents = new HashSet<Proposition>();
+		for (Component c : propNet.getInputComponentSet()) {
+			Proposition p = (Proposition) c;
+			reachableInputComponents.add(p);
+		}
+
+		Set<Component> legalSubnet = getReachableSubnet(propNet, getLegals(propNet, reachableInputComponents), factorTimeout);
+		Set<Component> disjuncts = new HashSet<Component>(
+				propNet.getTerminalProposition().getSingleInput().getInputs());
 		Set<Component> toRemove = new HashSet<Component>();
 		for (Component disjunct : disjuncts) {
 			PhaseTimeoutException.checkTimeout(factorTimeout);
@@ -167,14 +225,37 @@ public class PropNetAnalyzer {
 				toRemove.add(disjunct);
 		}
 		disjuncts.removeAll(toRemove);
+		DebugLog.output("Total props:" + propNet.getPropositions().size() + " props");
 
 		for (Component disjunct : disjuncts) {
 			PhaseTimeoutException.checkTimeout(factorTimeout);
+			Set<Component> mustAdd = new HashSet<Component>();
+			mustAdd.add(generateNewTerminalProposition(disjunct));
 			Set<Component> subnet = getDisjunctSubnet(propNet, disjunct, disjuncts);
+			PropNet roleNet = propNet.clone(subnet, new HashSet<Component>());
+			List<Proposition> baseProps = new ArrayList<Proposition>(roleNet.getPropositions());
+			List<GdlSentence> sentences = new ArrayList<GdlSentence>();
+			DebugLog.output("Disjunct has " + baseProps.size() + " props");
+
+			for (Proposition p : baseProps) {
+				sentences.add(p.getName());
+			}
+			List<Role> roles = Role.computeRoles(sentences);
+			DebugLog.output("Disjunct has " + roles.size() + "roles");
 			subnet.addAll(legalSubnet);
-			propNets.add(propNet.clone(subnet));
+			propNets.add(propNet.clone(subnet, mustAdd));
+			DebugLog.output("Terminal prop is " + propNets.get(propNets.size() - 1).getTerminalProposition());
 		}
 
 		return propNets;
+	}
+
+	private Proposition generateNewTerminalProposition(Component currentDisjunct) {
+
+		currentDisjunct.removeAllOutputs();
+		Proposition p = new Proposition(new GdlProposition(new GdlConstant("terminal")));
+		currentDisjunct.addOutput(p);
+		p.addInput(currentDisjunct);
+		return p;
 	}
 }

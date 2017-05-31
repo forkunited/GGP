@@ -3,6 +3,7 @@ package org.ggp.dhtp.mcts;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.ggp.base.util.Pair;
 import org.ggp.base.util.statemachine.MachineState;
@@ -146,6 +147,7 @@ public class MCTSNode {
 		}
 		Move bestMove = null;
 		double bestUtility = 0.0;
+		int numSame = 0;
 		for (int i = 0; i < numPlayerMoves; i++) {
 			PhaseTimeoutException.checkTimeout(turnTimeout);
 			double averageUtility = playerVisits.get(i) == 0 ? 0 : playerUtil.get(i) / playerVisits.get(i);
@@ -154,6 +156,15 @@ public class MCTSNode {
 			if (bestMove == null || bestUtility < averageUtility) {
 				bestMove = playerMoves.get(i);
 				bestUtility = averageUtility;
+				numSame = 0;
+			} else if (bestUtility == averageUtility){
+				numSame ++;
+				double cutoff = ((double)numSame)/(numSame+1.0);
+				float randomVal = new Random().nextFloat();
+				if(randomVal > cutoff){
+					DebugLog.output("Found multiple best utility");;
+					bestMove = playerMoves.get(i);
+				}
 			}
 
 		}

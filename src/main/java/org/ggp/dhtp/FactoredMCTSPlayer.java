@@ -47,6 +47,8 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	private List<MCTSNode> currNodes;
 	private List<StateMachine> factoredMachines;
 
+	boolean firstMove = false;
+
 	boolean reachedAllTerminal;
 	boolean runHeur;
 	int maxLevel;
@@ -54,6 +56,9 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	Bounder b;
 	Heuristic h;
 	Player p;
+	boolean onePlayerGame;
+
+	Move lastMove;
 
 	class MoveContainer {
 		private Move move;
@@ -137,8 +142,8 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		DebugLog.output("Timeout is "+ timeout +" will return by "+turnTimeout);
 		DebugLog.output("Start Metagame");
 		this.reachedAllTerminal = false;
-
-
+		this.firstMove = true;
+		//this.onePlayerGame = this.getInitialStateMachine().getRoles().size() == 1;
 		heuristicMetaGame();
 		this.factoredMachines = new ArrayList<StateMachine>();
 		this.currNodes = new ArrayList<MCTSNode>();
@@ -147,20 +152,28 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				DebugLog.output("Propnet Analyzer Start");
 				PropNetAnalyzer analyzer = new PropNetAnalyzer();
 				DebugLog.output("Propnet Analyzer factor terminal goal reachable");
-				PropNet reachablePropNet = analyzer.factorTerminalGoalReachable(this.propNetMachine.getPropNet(),
+				DebugLog.output("Initial legals:"+this.propNetMachine.getPropNet().getLegalInputMap());
+				PropNet origNet = this.propNetMachine.getPropNet();
+				PropNet clonedNet = new PropNet(origNet.getRoles(), origNet.getComponents());
+				PropNet reachablePropNet = analyzer.factorTerminalGoalReachable(clonedNet,
 						factorTimeout);
 				DebugLog.output("Propnet Analyzer factor disjunctive");
 				List<PropNet> propNets = analyzer.factorDisjunctive(reachablePropNet, factorTimeout);
 
 				for (int i = 0; i < propNets.size(); i++) {
 					PropNet propNet = propNets.get(i);
-					SamplePropNetStateMachine factoredMachine = new SamplePropNetStateMachine();
-					factoredMachine.initialize(propNet); // This "initialize"
-															// thing
-															// is annoying. But
-															// simplest given
-															// existing codebase
-					this.factoredMachines.add(factoredMachine);
+					DebugLog.output("Base props for "+i +" is "+propNet.getBasePropositions().size());
+					//propNet.renderToFile("/home/vk/"+i+".dot");
+
+					if(analyzer.shouldConsiderDisjunctive(propNet, getRole(), factorTimeout)){
+						DebugLog.output("Should not consider propNet..skipping"+i);
+					} else {
+						SamplePropNetStateMachine factoredMachine = new SamplePropNetStateMachine();
+						factoredMachine.initialize(clonedNet);
+						factoredMachine.setLegalMovesMask(propNet.getLegalPropositions());
+						this.factoredMachines.add(factoredMachine);
+						break;
+					}
 					// propNet.renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output"
 					// + i + ".dot");
 				}
@@ -168,6 +181,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 				DebugLog.output("Reduced propnet from " + this.propNetMachine.getPropNet().getComponents().size()
 						+ " to " + reachablePropNet.getComponents().size());
 				DebugLog.output("Factored into " + this.factoredMachines.size() + " propnets");
+				lastMove = null;
 			} catch (PhaseTimeoutException pte) {
 				this.factoredMachines = new ArrayList<StateMachine>();
 				this.factoredMachines.add(this.propNetMachine);
@@ -187,6 +201,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		for (StateMachine machine : this.factoredMachines) {
 			this.currNodes.add(new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT,
 					new HashMap<MachineState, MCTSNode>(), this.h));
+			DebugLog.output("In initial state, num legal moves: "+machine.getLegalMoves(machine.getInitialState(), getRole()));
 		}
 		long depthChargeStart = System.currentTimeMillis();
 		try {
@@ -397,7 +412,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 
 				if (currNode == null) {
 					DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-					currNode = new MCTSNode(machine, state, null, role, EXPLORATION_COEFFICIENT,
+					currNode = new MCTSNode(factoredMachines.get(i), state, null, role, EXPLORATION_COEFFICIENT,
 							new HashMap<MachineState, MCTSNode>(), this.h);
 				}
 
@@ -459,7 +474,9 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 			DebugLog.output("Picking Random Move");
 			bestMove = randomMove;
 		}
+		firstMove = true;
 		DebugLog.output("Picked move "+bestMove.toString());
+		lastMove = bestMove;
 		return bestMove;
 	}
 
