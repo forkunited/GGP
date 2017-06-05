@@ -29,7 +29,7 @@ public class MCSHeuristic extends Heuristic {
 	}
 
 	@Override
-	public double evalState(Role role, MachineState state) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException  {
+	public synchronized double evalState(Role role, MachineState state) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException  {
 		depthChargeCount = 0;
 		depthChargeResult = -1;
 		while (depthChargeCount < maxDepthCharge) {

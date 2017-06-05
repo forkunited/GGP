@@ -198,7 +198,7 @@ public abstract class Component implements Serializable
     	oldToNew.put(this, cloneInstance);
 
     	for (Component input : this.inputs) {
-    		if (!filter.contains(input))
+    		if (filter != null && !filter.contains(input))
     			continue;
     		Component cloneInput = null;
     		if (oldToNew.containsKey(input))
@@ -210,7 +210,7 @@ public abstract class Component implements Serializable
     	}
 
     	for (Component output : this.outputs) {
-    		if (!filter.contains(output))
+    		if (filter != null && !filter.contains(output))
     			continue;
     		Component cloneOutput = null;
     		if (oldToNew.containsKey(output))

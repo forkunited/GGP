@@ -49,7 +49,7 @@ public class GoalProximityHeuristic extends Heuristic {
 		return "GoalProximity(" + this.mode + ")";
 	}
 
-	private double getGoalValue(MachineState state, Role role) throws GoalDefinitionException{
+	private synchronized double getGoalValue(MachineState state, Role role) throws GoalDefinitionException{
 		if(this.propNet == null || this.machine.getGoal(state, role) > 0){
 			return this.machine.getGoal(state, role);
 		}

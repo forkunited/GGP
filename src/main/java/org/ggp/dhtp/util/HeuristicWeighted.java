@@ -17,7 +17,7 @@ public class HeuristicWeighted extends Heuristic {
 	}
 
 	@Override
-	public double evalState(Role role, MachineState state)
+	public synchronized double evalState(Role role, MachineState state)
 			throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
 
 		double h = 0.0;

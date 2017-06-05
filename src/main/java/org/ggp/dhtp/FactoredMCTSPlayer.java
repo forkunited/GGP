@@ -167,7 +167,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 					DebugLog.output("Base props for "+i +" is "+propNet.getBasePropositions().size());
 					//propNet.renderToFile("/home/vk/"+i+".dot");
 
-					if(analyzer.shouldConsiderDisjunctive(propNet, getRole(), factorTimeout)){
+					if(!analyzer.shouldConsiderDisjunctive(propNet, getRole(), factorTimeout)){
 						DebugLog.output("Should not consider propNet..skipping"+i);
 					} else {
 						SamplePropNetStateMachine factoredMachine = new SamplePropNetStateMachine();

@@ -24,7 +24,7 @@ public class HeuristicFreedom extends Heuristic {
 	}
 
 	@Override
-	public double evalState(Role role, MachineState state) throws MoveDefinitionException {
+	public synchronized double evalState(Role role, MachineState state) throws MoveDefinitionException {
 		int stateMoves = (this.machine.isTerminal(state)) ? 0 : this.machine.getLegalMoves(state, role).size();
 		int roleMoves = this.machine.findActions(role).size();
 		double mobility = (double)stateMoves/(double)roleMoves;

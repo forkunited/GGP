@@ -43,6 +43,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     private List<Role> roles;
     private MachineState initialState;
     private Map<Role, Set<Proposition>> legalMoves;
+
+    private List<Gdl> description;
+
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
@@ -53,6 +56,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	//System.out.println("Initializing");
         try {
         	description = sanitizeDistinct(description);
+        	this.description = description;
             initialize(OptimizingPropNetFactory.create(description));
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -64,6 +68,10 @@ public class SamplePropNetStateMachine extends StateMachine {
         this.roles = propNet.getRoles();
         this.ordering = getOrdering();
         this.initialState = null;
+    }
+
+    public List<Gdl> getDescription() {
+    	return this.description;
     }
 
     /**
