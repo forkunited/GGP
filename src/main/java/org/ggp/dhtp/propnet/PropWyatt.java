@@ -1,8 +1,9 @@
 package org.ggp.dhtp.propnet;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -11,6 +12,7 @@ import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlProposition;
 import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
+import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.components.And;
 import org.ggp.base.util.propnet.architecture.components.Constant;
@@ -24,12 +26,16 @@ public class PropWyatt {
 	/* Old structures kept around for compatibility */
 	/* End old structures */
 
-	private LinkedList<Component> components;
+	private ArrayList<Component> components;
 	private Map<GdlSentence, Integer> propositionIndex;
+	private Map<Integer, GdlSentence> indexProposition;
 	private Map<Component, Integer> componentIndex;
 	private List<Role> roleList;
+	private Map<Proposition, Proposition> legalInputMap;
+	private Map<GdlSentence, Proposition> inputPropositions;
+	private Map<Role, Set<Proposition>> legalPropositions;
 
-	private BitSet componentVector;
+	private BitSet componentVector;  /* stores the truth value of component at index */
 	private BitSet baseVector;
 	private BitSet goalVector;
 	private BitSet inputVector;
@@ -38,22 +44,134 @@ public class PropWyatt {
 	private BitSet andVector;
 	private BitSet orVector;
 	private BitSet notVector;
+	private BitSet propVector;
+	private BitSet initializedVector;
 	private int terminalIndex;
 	private int initIndex;
 
-	private List<Integer> toProcess;
+	private BitSet toProcess;
 	private int[] andCounters;
 	private int[] orCounters;
 	private int[] numberInputs;
+
 	private BitSet[] inputArray;
 	private BitSet[] outputArray;
 	private Map<Role,BitSet> roleGoalMap;
 	private Map<Role,BitSet> roleLegalMap;
 
-	public PropWyatt(List<Role> roles, Set<Component> components) {
-		this.components = new LinkedList<Component>(components);
+	public Map<Proposition, Proposition> getLegalInputMap()
+	{
+		return this.legalInputMap;
+	}
+
+	public Map<GdlSentence, Proposition> getInputPropositions() {
+
+		return this.inputPropositions;
+	}
+	public BitSet getInitializedVector() {
+		return this.initializedVector;
+	}
+
+	public ArrayList getRawComponents() {
+		return this.components;
+	}
+
+	public BitSet getGoal(Role r){
+		return this.roleGoalMap.get(r);
+	}
+
+	public BitSet getLegal(Role r) {
+		return this.roleLegalMap.get(r);
+	}
+
+	public int getInitIndex(){
+		return initIndex;
+	}
+
+	public int getTerminalIndex(){
+		return terminalIndex;
+	}
+
+	public Map<GdlSentence, Integer> getPropositionMap() {
+		return this.propositionIndex;
+	}
+
+	public Map<Integer, GdlSentence> getIndexPropMap() {
+		return this.indexProposition;
+	}
+
+	public BitSet getToProcess() {
+		return this.toProcess;
+	}
+
+	public BitSet getBaseVector() {
+		return this.baseVector;
+	}
+
+	public BitSet getInputVector() {
+		return this.inputVector;
+	}
+
+	public BitSet getAndVector() {
+		return this.andVector;
+	}
+
+	public BitSet getOrVector() {
+		return this.orVector;
+	}
+
+	public BitSet getNotVector() {
+		return this.notVector;
+	}
+
+	public BitSet getComponents() {
+		return this.componentVector;
+	}
+
+	public BitSet getConstantVector() {
+		return this.constantVector;
+	}
+
+	public BitSet getPropVector() {
+		return this.propVector;
+	}
+
+	public BitSet getComponentInputs(int i) {
+		return this.inputArray[i];
+	}
+
+	public BitSet getComponentOutputs(int i) {
+		return this.outputArray[i];
+	}
+
+	public int getAndCounter(int i) {
+		return this.andCounters[i];
+	}
+
+	public int getOrCounter(int i) {
+		return this.orCounters[i];
+	}
+
+	public void incrAndCounter(int i, int delta) {
+		this.andCounters[i] += delta;
+	}
+
+	public void incrOrCounter(int i, int delta) {
+		this.orCounters[i] += delta;
+	}
+
+	public int getTotalInputs(int i) {
+		return this.numberInputs[i];
+	}
+
+	public BitSet getTransitionVector() {
+		return this.transitionVector;
+	}
+
+	public PropWyatt(List<Role> roles, ArrayList<Component> components) {
+		this.components = new ArrayList<Component>(components);
 		this.roleList = roles;
-		this.toProcess = new LinkedList<Integer>();
+		this.toProcess = new BitSet(this.components.size());
 		this.propositionIndex = new HashMap<GdlSentence, Integer>();
 		this.componentIndex = new HashMap<Component, Integer>();
 		this.roleGoalMap = new HashMap<Role, BitSet>();
@@ -61,7 +179,9 @@ public class PropWyatt {
 			this.roleGoalMap.put(r, new BitSet(this.components.size()));
 			this.roleLegalMap.put(r, new BitSet(this.components.size()));
 		}
-
+		recordInputPropositions();
+		recordLegalPropositions();
+		recordLegalInputMap();
 	}
 
 	/* Sets propnet internals to array representation for lifetime of datastructure */
@@ -73,6 +193,7 @@ public class PropWyatt {
 			if (c instanceof Proposition) {
 				p = (Proposition) c;
 				this.propositionIndex.put(p.getName(), i);
+				this.indexProposition.put(i, p.getName());
 			}
 			i++;
 		}
@@ -90,6 +211,7 @@ public class PropWyatt {
 		this.numberInputs = new int[this.components.size()];
 		this.inputArray = new BitSet[this.components.size()];
 		this.outputArray = new BitSet[this.components.size()];
+		this.initializedVector = new BitSet(this.components.size());
 		/* Initialize all internal structures based on component*/
 		i = 0;
 		for (Component c: this.components) {
@@ -117,6 +239,7 @@ public class PropWyatt {
 
 			/* Proposition initializations */
 			if (c instanceof Proposition) {
+				this.propVector.set(i);
 				p = (Proposition) c;
 				initPropFreeze(p, i);
 			}
@@ -191,4 +314,78 @@ public class PropWyatt {
 		}
 	}
 
+	/* Old functions (for find actions) constructing map data structures slightly modified */
+
+	private void recordLegalInputMap() {
+		this.legalInputMap = new HashMap<Proposition, Proposition>();
+		// Create a mapping from Body->Input.
+		Map<List<GdlTerm>, Proposition> inputPropsByBody = new HashMap<List<GdlTerm>, Proposition>();
+		for(Proposition inputProp : this.inputPropositions.values()) {
+			List<GdlTerm> inputPropBody = (inputProp.getName()).getBody();
+			inputPropsByBody.put(inputPropBody, inputProp);
+		}
+		// Use that mapping to map Input->Legal and Legal->Input
+		// based on having the same Body proposition.
+		for(Set<Proposition> legalProps : this.legalPropositions.values()) {
+			for(Proposition legalProp : legalProps) {
+				List<GdlTerm> legalPropBody = (legalProp.getName()).getBody();
+				if (inputPropsByBody.containsKey(legalPropBody)) {
+    				Proposition inputProp = inputPropsByBody.get(legalPropBody);
+    				this.legalInputMap.put(inputProp, legalProp);
+    				this.legalInputMap.put(legalProp, inputProp);
+				}
+			}
+		}
+	}
+
+
+	private void recordInputPropositions()
+	{
+		this.inputPropositions = new HashMap<GdlSentence, Proposition>();
+		for (Component component : this.components)
+		{
+			// Skip all components that aren't propositions
+			if (!(component instanceof Proposition)){
+				continue;
+			}
+			Proposition proposition = (Proposition)component;
+		    // Skip all propositions that aren't GdlFunctions.
+			if (!(proposition.getName() instanceof GdlRelation))
+			    continue;
+
+			GdlRelation relation = (GdlRelation) proposition.getName();
+			if (relation.getName().getValue().equals("does")) {
+				this.inputPropositions.put(proposition.getName(), proposition);
+				proposition.isInput = true;
+			}
+		}
+	}
+
+	private void recordLegalPropositions()
+	{
+		this.legalPropositions = new HashMap<Role, Set<Proposition>>();
+		for (Component component : this.components)
+		{
+			// Skip all components that aren't propositions
+			if (!(component instanceof Proposition)) {
+				continue;
+			}
+
+			Proposition proposition = (Proposition)component;
+
+		    // Skip all propositions that aren't GdlRelations.
+			if (!(proposition.getName() instanceof GdlRelation))
+			    continue;
+
+			GdlRelation relation = (GdlRelation) proposition.getName();
+			if (relation.getName().getValue().equals("legal")) {
+				GdlConstant name = (GdlConstant) relation.get(0);
+				Role r = new Role(name);
+				if (!this.legalPropositions.containsKey(r)) {
+					this.legalPropositions.put(r, new HashSet<Proposition>());
+				}
+				this.legalPropositions.get(r).add(proposition);
+			}
+		}
+	}
 }
