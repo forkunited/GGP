@@ -18,7 +18,6 @@ import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.Pair;
 import org.ggp.base.util.game.Game;
-import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -28,7 +27,6 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.propnet.SamplePropNetStateMachine;
 import org.ggp.dhtp.mcts.MCTSNode;
-import org.ggp.dhtp.propnet.PropNetAnalyzer;
 import org.ggp.dhtp.util.Bounder;
 import org.ggp.dhtp.util.DebugLog;
 import org.ggp.dhtp.util.FixedBounder;
@@ -40,12 +38,12 @@ import org.ggp.dhtp.util.HeuristicWeighted;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
-	private static final int THREAD_COUNT = 4;
+	private static final int THREAD_COUNT = 6;
 	private static final double TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double METAGAME_TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double FACTOR_SAFETY_MARGIN = 0.25;
-	private static final double MCTS_SAFETY_MARGIN = 0.5 - THREAD_COUNT * .02;
-	private static final double BEST_MOVE_SELECTION_MARGIN = 0.10;
+	private static final double MCTS_SAFETY_MARGIN = 0.50;
+	private static final double BEST_MOVE_SELECTION_MARGIN = 0.25;
 	private static final double EXPLORATION_COEFFICIENT = 60.0;
 	private static final double DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF = 0.0;
 
@@ -53,6 +51,8 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 
 	private List<MCTSNode> currNodes;
 	private List<List<StateMachine>> tFactoredMachines;  // A list of factored machines for each thread
+
+	private ExecutorService threadPool;
 
 	boolean firstMove = false;
 
@@ -143,6 +143,8 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		//this.propNetMachine.getPropNet().renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output.dot");
 
+		this.threadPool = Executors.newFixedThreadPool(THREAD_COUNT);
+
 		long factorTimeout = (long) (FACTOR_SAFETY_MARGIN * (timeout - System.currentTimeMillis()))
 				+ System.currentTimeMillis();
 		long turnTimeout = (long) (METAGAME_TIMEOUT_SAFETY_MARGIN * (timeout - System.currentTimeMillis()))
@@ -156,7 +158,7 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 		heuristicMetaGame();
 		List<StateMachine> factoredMachines = new ArrayList<StateMachine>();
 		this.currNodes = Collections.synchronizedList(new ArrayList<MCTSNode>());
-
+/*
 		if (this.getStateMachine().getRoleIndices().size() == 1) {
 			try {
 				DebugLog.output("Propnet Analyzer Start");
@@ -197,12 +199,12 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 				factoredMachines = new ArrayList<StateMachine>();
 				factoredMachines.add(this.propNetMachine);
 			}
-		} else {
+		} else {*/
 			SamplePropNetStateMachine singleMachine = new SamplePropNetStateMachine();
-			PropNet propNet = this.propNetMachine.getPropNet().clone();
-			singleMachine.initialize(propNet);
+			//PropNet propNet = this.propNetMachine.getPropNet().clone();
+			singleMachine.initialize(getMatch().getGame().getRules()/*propNet*/, true);
 			factoredMachines.add(singleMachine);
-		}
+		/*}*/
 
 		Role role = getRole();
 		// this.propNetMachine.getPropNet().renderToFile("/home/vk/1.dot");
@@ -221,14 +223,13 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 		for (int i = 1; i < THREAD_COUNT; i++) {
 			List<StateMachine> tMachines = Collections.synchronizedList(new ArrayList<StateMachine>());
 			for (StateMachine machine : factoredMachines) {
-				SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
-				cloneMachine.initialize(((SamplePropNetStateMachine)machine).getPropNet().clone());
-				tMachines.add(cloneMachine);
-				//cloneMachine.setLegalMovesMask(this.propNetMachine.getPropNet().getLegalPropositions()); // FIXME Why?
-				//DebugLog.output("C In initial state, num legal moves: "+cloneMachine.getLegalMoves(cloneMachine.getInitialState(), getRole()));
-				//cloneMachine.getPropNet().renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/coutput.dot");
-				//cloneMachine.initialize(getMatch().getGame().getRules());//((SamplePropNetStateMachine)machine).getDescription());
+				// FIXME Swap SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
+				//cloneMachine.initialize(((SamplePropNetStateMachine)machine).getPropNet().clone());
+				//tMachines.add(cloneMachine);
 
+				SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
+				cloneMachine.initialize(singleMachine.getDescription(), false);//((SamplePropNetStateMachine)machine).getDescription());
+				tMachines.add(cloneMachine);
 			}
 			this.tFactoredMachines.add(tMachines);
 		}
@@ -501,14 +502,27 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 
 	@Override
 	public void stateMachineStop() {
-		// TODO Auto-generated method stub
+		try {
+			threadPool.shutdown();
+			threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			threadPool = null;
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 	}
 
 	@Override
 	public void stateMachineAbort() {
-		// TODO Auto-generated method stub
-
+		try {
+			threadPool.shutdown();
+			threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			threadPool = null;
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -537,15 +551,13 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 	private Pair<Integer, Boolean> performDepthCharges(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException {
 		boolean allFullyExplored = false;
 		int numDepthCharges = 0;
-		ExecutorService threadPool = Executors.newFixedThreadPool(THREAD_COUNT);
-		List<DepthChargeRunner> runners = new ArrayList<DepthChargeRunner>();
 
-		for (int i = 0; i < THREAD_COUNT; i++)
-			runners.add(new DepthChargeRunner(i, timeout));
 		try {
-			List<Future<Pair<Integer, Boolean>>> futureResults = threadPool.invokeAll(runners);
-			threadPool.shutdown();
-			threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			List<Future<Pair<Integer, Boolean>>> futureResults = new ArrayList<Future<Pair<Integer, Boolean>>>();
+			for (int i = 0; i < THREAD_COUNT; i++) {
+				futureResults.add(threadPool.submit(new DepthChargeRunner(i, timeout)));
+			}
+
 			allFullyExplored = true;
 			for (Future<Pair<Integer, Boolean>> futureResult : futureResults) {
 				Pair<Integer, Boolean> result = futureResult.get();
@@ -585,16 +597,19 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 						MCTSNode currNode = currNodes.get(nodeIndex);
 						double bpr = currNode.performIteration(this.timeout, false, tFactoredMachines.get(this.machine).get(nodeIndex));
 						if (bpr < 0) {
-							allFullyExplored = false;
 							throw new PhaseTimeoutException();
 						}
 						numDepthCharges++;
 
 						if (!currNode.isFullyExplored())
 							allFullyExplored = false;
+
+						if (System.currentTimeMillis() >= this.timeout)
+							break;
 					}
 				}
 			} catch (PhaseTimeoutException e) {
+				allFullyExplored = false;
 				DebugLog.output("Timeout triggered during mcts (thread " + this.machine + ")");
 			} catch (IllegalArgumentException e) {
 				e.printStackTrace();

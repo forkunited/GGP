@@ -107,7 +107,7 @@ public class MCTSNode {
 			this.h = h;
 			if (this.h != null) {
 				//DebugLog.output("Evaluating state using heuristic");
-				this.heurVal = h.evalState(player, state);
+					this.heurVal = h.evalState(player, state);
 			} else {
 				heurVal = 0.0;
 			}
@@ -126,7 +126,7 @@ public class MCTSNode {
 		//DebugLog.output("Exploration coefficient is " +
 		 //explorationCoefficient);
 
-		return (playerUtility) / (numPlayerVisits) + 0.5*playerHeuristic
+		return (playerUtility) / (numPlayerVisits) + 0.5*playerHeuristic / (numPlayerVisits)
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numPlayerVisits);
 	}
 
@@ -136,7 +136,7 @@ public class MCTSNode {
 		double opponentHeuristic = opponentHeur.get(opponentMoveIdx);
 		int numOpponentVisits = opponentVisits.get(opponentMoveIdx);
 
-		return -1 * (opponentUtility) / (numOpponentVisits) - 0.5*opponentHeuristic
+		return -1 * (opponentUtility) / (numOpponentVisits) - 0.5*opponentHeuristic / (numOpponentVisits)
 				// + Math.sqrt(opponentVarSum/numOpponentVisits)
 				+ explorationCoefficient * Math.sqrt(Math.log(totalVisits) / numOpponentVisits);
 	}
@@ -236,14 +236,23 @@ public class MCTSNode {
 		if (children.size() >= numPlayerMoves * numOpponentMoves)
 			return null;
 		// expand
-		int playerMoveIdx = getPlayerIdxFromChildIdx(children.size());
-		int opponentMoveIdx = getOpponentIdxFromChildIdx(children.size());
-		List<Move> jointMoves = opponentMoves.get(opponentMoveIdx);
-		Move playerMove = playerMoves.get(playerMoveIdx);
-		jointMoves.set(playerRoleIdx, playerMove);
-		MachineState newState = machine.getNextState(state, jointMoves);
+
+		if (System.currentTimeMillis() > turnTimeout)
+			throw new PhaseTimeoutException();
+
+		MachineState newState = null;
 
 		synchronized (cachedNodes) {
+			if (System.currentTimeMillis() > turnTimeout)
+				throw new PhaseTimeoutException();
+
+			int playerMoveIdx = getPlayerIdxFromChildIdx(children.size());
+			int opponentMoveIdx = getOpponentIdxFromChildIdx(children.size());
+			List<Move> jointMoves = opponentMoves.get(opponentMoveIdx);
+			Move playerMove = playerMoves.get(playerMoveIdx);
+			jointMoves.set(playerRoleIdx, playerMove);
+			newState = machine.getNextState(state, jointMoves);
+
 			if (cachedNodes.containsKey(newState)) {
 				MCTSNode newChild = cachedNodes.get(newState);
 				children.add(newChild);
@@ -290,17 +299,23 @@ public class MCTSNode {
 		if (machine == null)
 			machine = this.machine;
 
+		if (System.currentTimeMillis() > turnTimeout)
+			throw new PhaseTimeoutException();
+
 		double bpr, heur;
 		int selectedIdx, bestIdx = -1;
 		MachineState newState = null;
 		MCTSNode selectedChild = null;
 		synchronized (this) {
+			if (System.currentTimeMillis() > turnTimeout)
+				throw new PhaseTimeoutException();
+
 			if (fullyExploreNode(turnTimeout)) {
 				return fullyExploredValue;
 			}
 
 			if (System.currentTimeMillis() > turnTimeout)
-				return -1;
+				throw new PhaseTimeoutException();
 
 			if ((newState = expand(turnTimeout, machine)) == null) {
 				// select best player move based on criteria
@@ -308,11 +323,11 @@ public class MCTSNode {
 				int bestPlayerIdx = 0;
 				for (int i = 0; i < numPlayerMoves; i++) {
 					if (System.currentTimeMillis() > turnTimeout)
-						return -1;
+						throw new PhaseTimeoutException();
 					boolean allChildrenFullyExploredForPlayerMove = true;
 					for (int j = 0; j < numOpponentMoves; j++) {
 						if (System.currentTimeMillis() > turnTimeout)
-							return -1;
+							throw new PhaseTimeoutException();
 						if (!children.get(numOpponentMoves * i + j).isFullyExplored) {
 							allChildrenFullyExploredForPlayerMove = false;
 							break;
@@ -341,7 +356,7 @@ public class MCTSNode {
 				int bestOpponentIdx = 0;
 				for (int i = 0; i < numOpponentMoves; i++) {
 					if (System.currentTimeMillis() > turnTimeout)
-						return -1;
+						throw new PhaseTimeoutException();
 
 					if (first) {
 						DebugLog.output("Calculating selection score for child " + opponentMoves.get(i).toString());
@@ -378,13 +393,13 @@ public class MCTSNode {
 			heur = selectedChild.heurVal;
 			bpr = selectedChild.performIteration(turnTimeout, false, machine);
 			if (bpr == -1)
-				return -1;
+				throw new PhaseTimeoutException();
 			selectedIdx = bestIdx;
 		} else { // Expand and simulate
 			selectedIdx = children.size() - 1;
 			bpr = simulate(newState, turnTimeout, machine);
 			if (bpr == -1) {
-				return -1;
+				throw new PhaseTimeoutException();
 			}
 			heur = children.get(selectedIdx).heurVal;
 		}
@@ -401,6 +416,9 @@ public class MCTSNode {
 		}
 
 		synchronized (this) {
+			if (System.currentTimeMillis() > turnTimeout)
+				throw new PhaseTimeoutException();
+
 			updateUtilStats(bpr, playerMoveIdx, this.playerVisits, this.playerUtil);
 			updateUtilStats(bpr, opponentMoveIdx, this.opponentVisits, this.opponentUtil);
 			this.playerHeur.set(playerMoveIdx, this.playerHeur.get(playerMoveIdx) + heur);
@@ -429,6 +447,9 @@ public class MCTSNode {
 			// TODO: uncomment following line to set exploration coefficient based
 			// on variance of utility
 			this.explorationCoefficient = Math.max(10,Math.sqrt(utilVar / (totalVisits)));
+
+			if (System.currentTimeMillis() > turnTimeout)
+				return bpr;
 
 			if (fullyExploreNode(turnTimeout)) {
 				return fullyExploredValue;

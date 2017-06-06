@@ -46,16 +46,21 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     private List<Gdl> description;
 
+    @Override
+	public void initialize(List<Gdl> description) {
+    	initialize(description, true);
+    }
+
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
      * your discretion.
      */
-    @Override
-    public void initialize(List<Gdl> description) {
+    public void initialize(List<Gdl> description, boolean sanitize) {
     	//System.out.println("Initializing");
         try {
-        	description = sanitizeDistinct(description);
+        	if (sanitize)
+        		description = sanitizeDistinct(description);
         	this.description = description;
             initialize(OptimizingPropNetFactory.create(description));
         } catch (InterruptedException e) {
