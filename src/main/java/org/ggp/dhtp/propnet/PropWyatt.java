@@ -54,8 +54,8 @@ public class PropWyatt {
 	private int[] orCounters;
 	private int[] numberInputs;
 
-	private BitSet[] inputArray;
-	private BitSet[] outputArray;
+	private ArrayList<Integer>[] inputArray;
+	private ArrayList<Integer>[] outputArray;
 	private Map<Role,BitSet> roleGoalMap;
 	private Map<Role,BitSet> roleLegalMap;
 
@@ -136,12 +136,11 @@ public class PropWyatt {
 		return this.propVector;
 	}
 
-	public BitSet getComponentInputs(int i) {
-		System.out.println("This input array size: " + this.inputArray.length);
+	public ArrayList<Integer> getComponentInputs(int i) {
 		return this.inputArray[i];
 	}
 
-	public BitSet getComponentOutputs(int i) {
+	public ArrayList<Integer> getComponentOutputs(int i) {
 		return this.outputArray[i];
 	}
 
@@ -218,18 +217,17 @@ public class PropWyatt {
 		this.notVector = new BitSet(this.components.size());
 		this.orCounters = new int[this.components.size()];
 		this.numberInputs = new int[this.components.size()];
-		this.inputArray = new BitSet[this.components.size()];
-		this.outputArray = new BitSet[this.components.size()];
+		this.inputArray = new ArrayList[this.components.size()];
+		this.outputArray = new ArrayList[this.components.size()];
 		this.initializedVector = new BitSet(this.components.size());
 		this.propVector = new BitSet(this.components.size());
 		/* Initialize all internal structures based on component*/
 		i = 0;
 		for (Component c: this.components) {
 			/* General Component Initializations */
-			System.out.println("Component " + i + "= " + c);
 			this.componentIndex.put(c, i);
-			this.inputArray[i] = new BitSet(this.components.size());
-			this.outputArray[i] = new BitSet(this.components.size());
+			this.inputArray[i] = new ArrayList<Integer>();
+			this.outputArray[i] = new ArrayList<Integer>();
 			this.numberInputs[i] = c.getInputs().size();
 
 			/* And Initializations */
@@ -272,10 +270,10 @@ public class PropWyatt {
 		i = 0;
 		for (Component c: this.components) {
 			for (Component inputC: c.getInputArray()) {
-				this.inputArray[i].set(this.componentIndex.get(inputC));
+				this.inputArray[i].add(this.componentIndex.get(inputC));
 			}
 			for (Component outputC: c.getOutputArray()) {
-				this.outputArray[i].set(this.componentIndex.get(outputC));
+				this.outputArray[i].add(this.componentIndex.get(outputC));
 			}
 			i++;
 		}

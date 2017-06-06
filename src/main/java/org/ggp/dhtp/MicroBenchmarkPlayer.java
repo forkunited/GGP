@@ -13,7 +13,7 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.dhtp.propnet.InternalMachineState;
+import org.ggp.base.util.statemachine.implementation.propnet.SamplePropNetStateMachine;
 import org.ggp.dhtp.propnet.PropWyattStateMachine;
 
 public class MicroBenchmarkPlayer extends StateMachineGamer {
@@ -24,7 +24,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 	boolean USE_CACHE = false;
 
 	@Override
-	public PropWyattStateMachine getInitialStateMachine() {
+	public SamplePropNetStateMachine getInitialStateMachine() {
 		// TODO Auto-generated method stub
 		/*
 		StateMachine rawMachine;
@@ -40,7 +40,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 			return rawMachine;
 		}
 		*/
-		return new PropWyattStateMachine();
+		return new SamplePropNetStateMachine();
 	}
 
 	@Override
@@ -61,9 +61,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 			state = ((PropWyattStateMachine)machine).convertToInternal(state);
 		}
 		Role role = getRole();
-		System.out.println("Getting legal moves with state " + ((InternalMachineState)state).getBitSet());
 		List<Move> moves = machine.getLegalMoves(state,role);
-		System.out.println("Got legal moves " + moves);
 		int randomIndex = new Random().nextInt(moves.size());
 		long mctsStart = System.currentTimeMillis();
 		int numDepthCharges=0;

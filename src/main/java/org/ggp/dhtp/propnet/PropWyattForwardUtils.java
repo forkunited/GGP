@@ -1,5 +1,6 @@
 package org.ggp.dhtp.propnet;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
@@ -12,15 +13,10 @@ public class PropWyattForwardUtils {
 
 
 	public static void forwardProp(PropWyatt propNet) {
-		System.out.println("Starting forward prop");
-		System.out.println("To Process:" + propNet.getToProcess());
 		BitSet toProcess = propNet.getToProcess();
 		BitSet components = propNet.getComponents();
 		BitSet initialized = propNet.getInitializedVector();
-		System.out.println("To process size: " + toProcess.size());
-		System.out.println("Components size: " + components.size());
 		while (!toProcess.isEmpty()) {
-			System.out.println("The high components: " + components);
 			int i = toProcess.nextSetBit(0);
 			toProcess.clear(i);
 			/* Check if the value has been updated */
@@ -29,37 +25,36 @@ public class PropWyattForwardUtils {
 			if (oldVal != newVal || !initialized.get(i)) { /* Differential propagation */
 				components.flip(i); // update components vector to reflect new value
 				int delta = newVal == true ? 1 : -1;
-				BitSet outputComponents = propNet.getComponentOutputs(i);
+				ArrayList<Integer> outputComponents = propNet.getComponentOutputs(i);
 
 				/* Propagate changes to the outputs */
 				BitSet andVector = propNet.getAndVector();
 				BitSet orVector = propNet.getOrVector();
-				int outputIdx = outputComponents.nextSetBit(0);
-				while (outputIdx >= 0) {
+
+				for (int outputIdx : outputComponents) {
 					if (andVector.get(outputIdx)) {
 						if (!initialized.get(i)) {
-							BitSet incidentMask = (BitSet)propNet.getComponentInputs(outputIdx).clone();
-							incidentMask.and(components);
-							propNet.incrAndCounter(outputIdx, incidentMask.cardinality());
+							for (int incidentIdx: propNet.getComponentInputs(outputIdx)) {
+								if (components.get(incidentIdx)) {
+									propNet.incrAndCounter(outputIdx, 1);
+								}
+							}
 						} else {
 							propNet.incrAndCounter(outputIdx, delta);
 						}
 					} else if (orVector.get(outputIdx)) {
 						if (!initialized.get(i)) {
-							BitSet incidentMask = (BitSet)propNet.getComponentInputs(outputIdx).clone();
-							incidentMask.and(components);
-							propNet.incrOrCounter(outputIdx,  incidentMask.cardinality());
+							for (int incidentIdx: propNet.getComponentInputs(outputIdx)) {
+								if (components.get(incidentIdx)) {
+									propNet.incrOrCounter(outputIdx, 1);
+								}
+							}
 						} else {
 							propNet.incrOrCounter(outputIdx, delta);
 						}
 					} // TODO Add the optimization used in the other forward prop here
 					toProcess.set(outputIdx);
-					/* Get the next output index avoiding exceptions */
-					if (outputIdx == outputComponents.size() - 1) {
-						outputIdx = -1;
-					} else {
-						outputIdx = outputComponents.nextSetBit(outputIdx + 1);
-					}
+
 				}
 				initialized.set(i);
 			}
@@ -80,13 +75,13 @@ public class PropWyattForwardUtils {
 			}
 
 			/* Read the single input */
-			BitSet componentInputs = propNet.getComponentInputs(i);
-			if (componentInputs.cardinality() == 0) {
+			ArrayList<Integer> componentInputs = propNet.getComponentInputs(i);
+			if (componentInputs.size() == 0) {
 				/* Why hello there init proposition! */
 				return componentVector.get(i);
 			}
-			assert(componentInputs.cardinality() == 1);
-			int inputIdx = componentInputs.nextSetBit(0);
+			assert(componentInputs.size() == 1);
+			int inputIdx = componentInputs.get(0);
 			return componentVector.get(inputIdx);
 		}
 
@@ -116,9 +111,9 @@ public class PropWyattForwardUtils {
 		/* Handle not */
 		BitSet notVector = propNet.getNotVector();
 		assert(notVector.get(i));
-		BitSet componentInputs = propNet.getComponentInputs(i);
-		assert(componentInputs.cardinality() == 1);
-		int inputIdx = componentInputs.nextSetBit(0);
+		ArrayList<Integer> componentInputs = propNet.getComponentInputs(i);
+		assert(componentInputs.size() == 1);
+		int inputIdx = componentInputs.get(0);
 		return !componentVector.get(inputIdx);
 	}
 

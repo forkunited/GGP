@@ -55,7 +55,7 @@ public class PropWyattStateMachine extends StateMachine {
     }
 
     public void initialize(PropNet propNet) {
-    	propNet.renderToFile("/Users/ZenGround0/1.dot");
+    	//propNet.renderToFile("/Users/ZenGround0/1.dot");
         this.propNet = new PropWyatt(propNet.getRoles(), propNet.getComponentList());
         this.roles = propNet.getRoles();
         this.ordering = getOrdering();
@@ -69,7 +69,6 @@ public class PropWyattStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state) {
-    	System.out.println("Is terminal");
 
     	if(state instanceof InternalMachineState){
     		return isTerminalInternal((InternalMachineState)state);
@@ -82,7 +81,6 @@ public class PropWyattStateMachine extends StateMachine {
     }
 
     private boolean isTerminalInternal(InternalMachineState state) {
-    	System.out.println("Is terminal internal");
     	if(PropWyattForwardUtils.markBasesInternal(state, propNet)){
     		PropWyattForwardUtils.forwardProp(propNet);
     	}
@@ -113,11 +111,8 @@ public class PropWyattStateMachine extends StateMachine {
         int nDepth = 0;
         while(!isTerminalInternal(state)) {
             nDepth++;
-            System.out.println("Getting random joint move");
             List<Move> m = getRandomJointMoveInternal(state);
-            System.out.println("Got random move now getting next state" + m);
             state = getNextStateInternal(state, m);
-            System.out.println("Got next state");
         }
         if(theDepth != null)
             theDepth[0] = nDepth;
@@ -172,7 +167,7 @@ public class PropWyattStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
-    	System.out.println("Get Goal");
+    	//System.out.println("Get Goal");
 
     	if(state instanceof InternalMachineState){
     		return getGoalInternal((InternalMachineState)state, role);
@@ -263,10 +258,10 @@ public class PropWyattStateMachine extends StateMachine {
         BitSet transitionMask = propNet.getTransitionVector();
         int i = transitionMask.nextSetBit(0);
         while (i >= 0) {
-        	BitSet inputs = propNet.getComponentInputs(i);
-			int inputIdx = inputs.nextSetBit(0);
-        	BitSet outputs = propNet.getComponentOutputs(i);
-        	int outputIdx = outputs.nextSetBit(0);
+        	ArrayList<Integer> inputs = propNet.getComponentInputs(i);
+			int inputIdx = inputs.get(0);
+        	ArrayList<Integer> outputs = propNet.getComponentOutputs(i);
+        	int outputIdx = outputs.get(0);
         	/* Set output value to input */
         	components.set(outputIdx, components.get(inputIdx));
 
@@ -382,22 +377,16 @@ public class PropWyattStateMachine extends StateMachine {
     		PropWyattForwardUtils.forwardProp(propNet);
     		System.out.println("Ending forward prop");
     	}
-    	System.out.println("State we see " + propNet.getComponents());
     	BitSet legalMask = propNet.getLegal(role);
-    	System.out.println("Legal mask for role: " + legalMask);
     	ArrayList<Move> moves = new ArrayList<Move>();
     	BitSet components = propNet.getComponents();
     	ArrayList<Component> rawComponents = propNet.getRawComponents();
     	int i = legalMask.nextSetBit(0);
-    	System.out.println("while starts");
     	while (i>=0){
     		/* Only add the move if its allowed in this state */
     		if (components.get(i)) {
-    			System.out.println("Index: " +i + "set in state");
     			Proposition p = (Proposition)rawComponents.get(i);
-    			System.out.println("Got proposition" + p);
     			moves.add(getMoveFromProposition(p));
-    			System.out.println("Added moves");
     		}
 
     		/* Get the next output index avoiding exceptions */
@@ -407,7 +396,6 @@ public class PropWyattStateMachine extends StateMachine {
 				i = legalMask.nextSetBit(i + 1);
 			}
     	}
-    	System.out.println("Finished finding moves: " + moves);
         return moves;
     }
 
@@ -418,7 +406,6 @@ public class PropWyattStateMachine extends StateMachine {
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
     	//String TS = new SimpleDateFormat("yyyyMMddHHmm'.txt'").format(new Date());
-    	System.out.println("Compute next state");
 
     	if(state instanceof InternalMachineState){
     		return getNextStateInternal((InternalMachineState)state, moves);
@@ -437,10 +424,10 @@ public class PropWyattStateMachine extends StateMachine {
         BitSet toProcess = propNet.getToProcess();
         int i = transitionMask.nextSetBit(0);
         while (i >= 0) {
-        	BitSet inputs = propNet.getComponentInputs(i);
-			int inputIdx = inputs.nextSetBit(0);
-        	BitSet outputs = propNet.getComponentOutputs(i);
-        	int outputIdx = outputs.nextSetBit(0);
+        	ArrayList<Integer> inputs = propNet.getComponentInputs(i);
+			int inputIdx = inputs.get(0);
+        	ArrayList<Integer> outputs = propNet.getComponentOutputs(i);
+        	int outputIdx = outputs.get(0);
         	/* Set output value to input */
         	components.set(outputIdx, components.get(inputIdx));
         	/* Add all bases to the ToProcess queue */
@@ -462,7 +449,7 @@ public class PropWyattStateMachine extends StateMachine {
     private InternalMachineState getNextStateInternal(InternalMachineState state, List<Move> moves)
             throws TransitionDefinitionException {
     	//String TS = new SimpleDateFormat("yyyyMMddHHmm'.txt'").format(new Date());
-    	System.out.println("Compute next state internal");
+    	//System.out.println("Compute next state internal");
 
     	boolean basesMod = PropWyattForwardUtils.markBasesInternal(state, propNet);
     	boolean axnsMod = PropWyattForwardUtils.markActionsInternal(toDoes(moves), propNet); /* TODO toDoes() can be optimized */
@@ -476,10 +463,10 @@ public class PropWyattStateMachine extends StateMachine {
          BitSet toProcess = propNet.getToProcess();
          int i = transitionMask.nextSetBit(0);
          while (i >= 0) {
-         	BitSet inputs = propNet.getComponentInputs(i);
- 			int inputIdx = inputs.nextSetBit(0);
-         	BitSet outputs = propNet.getComponentOutputs(i);
-         	int outputIdx = outputs.nextSetBit(0);
+         	ArrayList<Integer> inputs = propNet.getComponentInputs(i);
+ 			int inputIdx = inputs.get(0);
+         	ArrayList<Integer> outputs = propNet.getComponentOutputs(i);
+         	int outputIdx = outputs.get(0);
          	if (components.get(outputIdx) != components.get(inputIdx)) {
          		/* Set output value to input */
          		components.set(outputIdx, components.get(inputIdx));
