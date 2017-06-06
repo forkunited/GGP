@@ -5,13 +5,19 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.Pair;
 import org.ggp.base.util.game.Game;
-import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -21,7 +27,6 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.propnet.SamplePropNetStateMachine;
 import org.ggp.dhtp.mcts.MCTSNode;
-import org.ggp.dhtp.propnet.PropNetAnalyzer;
 import org.ggp.dhtp.util.Bounder;
 import org.ggp.dhtp.util.DebugLog;
 import org.ggp.dhtp.util.FixedBounder;
@@ -32,19 +37,22 @@ import org.ggp.dhtp.util.HeuristicOpponentFreedom;
 import org.ggp.dhtp.util.HeuristicWeighted;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
-public class FactoredMCTSPlayer extends StateMachineGamer {
+public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
+	private static final int THREAD_COUNT = 6;
 	private static final double TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double METAGAME_TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double FACTOR_SAFETY_MARGIN = 0.25;
 	private static final double MCTS_SAFETY_MARGIN = 0.50;
-	private static final double BEST_MOVE_SELECTION_MARGIN = 0.10;
+	private static final double BEST_MOVE_SELECTION_MARGIN = 0.25;
 	private static final double EXPLORATION_COEFFICIENT = 60.0;
 	private static final double DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF = 0.0;
 
 	private SamplePropNetStateMachine propNetMachine;
 
 	private List<MCTSNode> currNodes;
-	private List<StateMachine> factoredMachines;
+	private List<List<StateMachine>> tFactoredMachines;  // A list of factored machines for each thread
+
+	private ExecutorService threadPool;
 
 	boolean firstMove = false;
 
@@ -133,7 +141,9 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		// this.propNetMachine.getPropNet().renderToFile("/home/vk/0.dot");
+		//this.propNetMachine.getPropNet().renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output.dot");
+
+		this.threadPool = Executors.newFixedThreadPool(THREAD_COUNT);
 
 		long factorTimeout = (long) (FACTOR_SAFETY_MARGIN * (timeout - System.currentTimeMillis()))
 				+ System.currentTimeMillis();
@@ -146,8 +156,9 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		this.firstMove = true;
 		//this.onePlayerGame = this.getInitialStateMachine().getRoles().size() == 1;
 		heuristicMetaGame();
-		this.factoredMachines = new ArrayList<StateMachine>();
-		this.currNodes = new ArrayList<MCTSNode>();
+		List<StateMachine> factoredMachines = new ArrayList<StateMachine>();
+		this.currNodes = Collections.synchronizedList(new ArrayList<MCTSNode>());
+/*
 		if (this.getStateMachine().getRoleIndices().size() == 1) {
 			try {
 				DebugLog.output("Propnet Analyzer Start");
@@ -167,13 +178,13 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 					DebugLog.output("Base props for "+i +" is "+propNet.getBasePropositions().size());
 					//propNet.renderToFile("/home/vk/"+i+".dot");
 
-					if(!analyzer.shouldConsiderDisjunctive(propNet, getRole(), factorTimeout)){
+					if(analyzer.shouldConsiderDisjunctive(propNet, getRole(), factorTimeout)){
 						DebugLog.output("Should not consider propNet..skipping"+i);
 					} else {
 						SamplePropNetStateMachine factoredMachine = new SamplePropNetStateMachine();
-						factoredMachine.initialize(clonedNet);
+						factoredMachine.initialize(clonedNet); // FIXME Why?
 						factoredMachine.setLegalMovesMask(propNet.getLegalPropositions());
-						this.factoredMachines.add(factoredMachine);
+						factoredMachines.add(factoredMachine);
 						break;
 					}
 					// propNet.renderToFile("C:/Users/forku_000/Documents/courses/spring17/cs227b/graphs/output"
@@ -182,36 +193,52 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 
 				DebugLog.output("Reduced propnet from " + this.propNetMachine.getPropNet().getComponents().size()
 						+ " to " + reachablePropNet.getComponents().size());
-				DebugLog.output("Factored into " + this.factoredMachines.size() + " propnets");
+				DebugLog.output("Factored into " + factoredMachines.size() + " propnets");
 				lastMove = null;
 			} catch (PhaseTimeoutException pte) {
-				this.factoredMachines = new ArrayList<StateMachine>();
-				this.factoredMachines.add(this.propNetMachine);
+				factoredMachines = new ArrayList<StateMachine>();
+				factoredMachines.add(this.propNetMachine);
 			}
-		} else {
-			// SamplePropNetStateMachine singleMachine = new
-			// SamplePropNetStateMachine();
-			// PropNet propNet = this.propNetMachine.getPropNet();
-			// singleMachine.initialize(propNet);
-			this.factoredMachines.add(this.propNetMachine);
-		}
-		int numDepthCharges = 0;
+		} else {*/
+			SamplePropNetStateMachine singleMachine = new SamplePropNetStateMachine();
+			//PropNet propNet = this.propNetMachine.getPropNet().clone();
+			singleMachine.initialize(getMatch().getGame().getRules()/*propNet*/, true);
+			factoredMachines.add(singleMachine);
+		/*}*/
+
 		Role role = getRole();
 		// this.propNetMachine.getPropNet().renderToFile("/home/vk/1.dot");
 
+		// Make a node for each factor
 		DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-		for (StateMachine machine : this.factoredMachines) {
+		for (StateMachine machine : factoredMachines) {
 			this.currNodes.add(new MCTSNode(machine, machine.getInitialState(), null, role, EXPLORATION_COEFFICIENT,
-					new HashMap<MachineState, MCTSNode>(), this.h));
+					new ConcurrentHashMap<MachineState, MCTSNode>(), this.h));
 			DebugLog.output("In initial state, num legal moves: "+machine.getLegalMoves(machine.getInitialState(), getRole()));
 		}
+
+		// Clone all the factored machines for each thread
+		this.tFactoredMachines = Collections.synchronizedList(new ArrayList<List<StateMachine>>());
+		this.tFactoredMachines.add(factoredMachines);
+		for (int i = 1; i < THREAD_COUNT; i++) {
+			List<StateMachine> tMachines = Collections.synchronizedList(new ArrayList<StateMachine>());
+			for (StateMachine machine : factoredMachines) {
+				// FIXME Swap SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
+				//cloneMachine.initialize(((SamplePropNetStateMachine)machine).getPropNet().clone());
+				//tMachines.add(cloneMachine);
+
+				SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
+				cloneMachine.initialize(singleMachine.getDescription(), false);//((SamplePropNetStateMachine)machine).getDescription());
+				tMachines.add(cloneMachine);
+			}
+			this.tFactoredMachines.add(tMachines);
+		}
+
+		int numDepthCharges = 0;
 		long depthChargeStart = System.currentTimeMillis();
 		try {
-			while (System.currentTimeMillis() < turnTimeout) {
-				for (MCTSNode node : this.currNodes)
-					node.performIteration(turnTimeout, false);
-				numDepthCharges++;
-			}
+			Pair<Integer, Boolean> dcCountAndFullExplored = performDepthCharges(turnTimeout);
+			numDepthCharges = dcCountAndFullExplored.left;
 		} catch (Exception e) {
 			System.out.println(e);
 		} finally {
@@ -414,7 +441,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 
 				if (currNode == null) {
 					DebugLog.output("Could not find node in search tree - creating new MCTS tree");
-					currNode = new MCTSNode(factoredMachines.get(i), state, null, role, EXPLORATION_COEFFICIENT,
+					currNode = new MCTSNode(this.tFactoredMachines.get(0).get(i), state, null, role, EXPLORATION_COEFFICIENT,
 							new HashMap<MachineState, MCTSNode>(), this.h);
 				}
 
@@ -424,19 +451,9 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 			long depthChargeStart = System.currentTimeMillis();
 			boolean allFullyExplored = false;
 			try {
-				while (System.currentTimeMillis() < mctsTimeout && !allFullyExplored) {
-					allFullyExplored = true;
-					for (MCTSNode currNode : this.currNodes) {
-						//if(numDepthCharges % 500 == 0){
-							//DebugLog.output("Completed "+numDepthCharges);
-						//}
-						currNode.performIteration(mctsTimeout, false);
-						numDepthCharges++;
-
-						if (!currNode.isFullyExplored())
-							allFullyExplored = false;
-					}
-				}
+				Pair<Integer, Boolean> dcCountAndFullExplored = performDepthCharges(mctsTimeout);
+				numDepthCharges = dcCountAndFullExplored.left;
+				allFullyExplored = dcCountAndFullExplored.right;
 			} catch (PhaseTimeoutException e){
 				DebugLog.output("Timeout triggered during mcts");
 			} finally {
@@ -456,7 +473,8 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 					// FIXME Check for noops?
 					runHeur = false;
 					Pair<Move, Double> bestMoveAndUtility = null;
-					for (MCTSNode currNode : this.currNodes) {
+					for (int i = 0; i < this.currNodes.size(); i++) {
+						MCTSNode currNode = this.currNodes.get(i);
 						Pair<Move, Double> curMoveAndUtility = currNode.getBestMoveAndUtility(turnTimeout);
 						if (bestMoveAndUtility == null || curMoveAndUtility.right > bestMoveAndUtility.right)
 							bestMoveAndUtility = curMoveAndUtility;
@@ -484,14 +502,27 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 
 	@Override
 	public void stateMachineStop() {
-		// TODO Auto-generated method stub
+		try {
+			threadPool.shutdown();
+			threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			threadPool = null;
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 	}
 
 	@Override
 	public void stateMachineAbort() {
-		// TODO Auto-generated method stub
-
+		try {
+			threadPool.shutdown();
+			threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			threadPool = null;
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -503,7 +534,7 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "Don't hate the factored MCTS player";
+		return "Don't hate the threaded factored MCTS player";
 	}
 
 	private int evalFn(Role role, MachineState state)
@@ -517,4 +548,75 @@ public class FactoredMCTSPlayer extends StateMachineGamer {
 		return !b.shouldExpand(getRole(), state, level);
 	}
 
+	private Pair<Integer, Boolean> performDepthCharges(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException {
+		boolean allFullyExplored = false;
+		int numDepthCharges = 0;
+
+		try {
+			List<Future<Pair<Integer, Boolean>>> futureResults = new ArrayList<Future<Pair<Integer, Boolean>>>();
+			for (int i = 0; i < THREAD_COUNT; i++) {
+				futureResults.add(threadPool.submit(new DepthChargeRunner(i, timeout)));
+			}
+
+			allFullyExplored = true;
+			for (Future<Pair<Integer, Boolean>> futureResult : futureResults) {
+				Pair<Integer, Boolean> result = futureResult.get();
+				numDepthCharges += result.left;
+				if (!result.right)
+					allFullyExplored = false;
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			DebugLog.output("ERROR: Thread interrupted...");
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+			DebugLog.output("ERROR: Execution exception...");
+		}
+
+		return Pair.of(numDepthCharges, allFullyExplored);
+	}
+
+	private class DepthChargeRunner implements Callable<Pair<Integer, Boolean>> {
+		private int machine;
+		private long timeout;
+
+		public DepthChargeRunner(int machine, long timeout) {
+			this.machine = machine;
+			this.timeout = timeout;
+		}
+
+		@Override
+		public Pair<Integer, Boolean> call() throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+			boolean allFullyExplored = false;
+			int numDepthCharges = 0;
+
+			try {
+				while (System.currentTimeMillis() < this.timeout && !allFullyExplored) {
+					allFullyExplored = true;
+					for (int nodeIndex = 0; nodeIndex < currNodes.size(); nodeIndex++) {
+						MCTSNode currNode = currNodes.get(nodeIndex);
+						double bpr = currNode.performIteration(this.timeout, false, tFactoredMachines.get(this.machine).get(nodeIndex));
+						if (bpr < 0) {
+							throw new PhaseTimeoutException();
+						}
+						numDepthCharges++;
+
+						if (!currNode.isFullyExplored())
+							allFullyExplored = false;
+
+						if (System.currentTimeMillis() >= this.timeout)
+							break;
+					}
+				}
+			} catch (PhaseTimeoutException e) {
+				allFullyExplored = false;
+				DebugLog.output("Timeout triggered during mcts (thread " + this.machine + ")");
+			} catch (IllegalArgumentException e) {
+				e.printStackTrace();
+			}
+
+			return Pair.of(numDepthCharges, allFullyExplored);
+		}
+
+	}
 }

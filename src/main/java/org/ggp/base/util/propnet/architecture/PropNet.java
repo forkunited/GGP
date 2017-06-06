@@ -621,14 +621,25 @@ public final class PropNet
 		//c.removeAllOutputs();
 	}
 
+	@Override
+	public PropNet clone() {
+		return clone(null, null, false);
+	}
+
 	public PropNet clone(Set<Component> filter, Set<Component> toAdd) {
+		return clone(filter, toAdd, true);
+	}
+
+	public PropNet clone(Set<Component> filter, Set<Component> toAdd, boolean removeDangling) {
 		Set<Component> cloneComponents = new HashSet<Component>();
 		Map<Component, Component> oldToNew = new HashMap<Component, Component>();
 		Queue<Component> danglingComponents = new LinkedList<Component>();
 
-		cloneComponents.addAll(toAdd);
+		if (toAdd != null)
+			cloneComponents.addAll(toAdd);
+
 		for (Component component : this.components) {
-			if (!filter.contains(component))
+			if (filter != null && !filter.contains(component))
 				continue;
 			Component cloneComponent = component.clone(filter, oldToNew);
 
@@ -639,17 +650,19 @@ public final class PropNet
 		}
 
 		// Remove dangling components
-		while (!danglingComponents.isEmpty()) {
-			Component next = danglingComponents.remove();
-			cloneComponents.remove(next);
-			for (Component output : next.getOutputs()) {
-				output.getInputs().remove(next);
-				if (output.isDangling()) {
-					danglingComponents.add(output);
+		if (removeDangling) {
+			while (!danglingComponents.isEmpty()) {
+				Component next = danglingComponents.remove();
+				cloneComponents.remove(next);
+				for (Component output : next.getOutputs()) {
+					output.getInputs().remove(next);
+					if (output.isDangling()) {
+						danglingComponents.add(output);
+					}
 				}
 			}
 		}
 
-		return new PropNet(this.roles, cloneComponents);
+		return new PropNet(new ArrayList<Role>(this.roles), cloneComponents);
 	}
 }

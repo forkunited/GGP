@@ -21,7 +21,7 @@ public class HeuristicOpponentFreedom extends HeuristicFreedom {
 	}
 
 	@Override
-	public double evalState(Role role, MachineState state) throws MoveDefinitionException {
+	public synchronized double evalState(Role role, MachineState state) throws MoveDefinitionException {
 		Map<Role, Integer> roleIdxs = machine.getRoleIndices();
 		double sum = 0;
 		double count = 0;
