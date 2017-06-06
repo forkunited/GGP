@@ -204,30 +204,39 @@ public abstract class StateMachineGamer extends Gamer
 	@Override
 	public final GdlTerm selectMove(long timeout) throws MoveSelectionException
 	{
+		GdlTerm ret = null;
 		try
 		{
+			System.out.println("Gamer 1");
 			stateMachine.doPerMoveWork();
 
 			List<GdlTerm> lastMoves = getMatch().getMostRecentMoves();
 			if (lastMoves != null)
 			{
+				System.out.println("Gamer 2");
+
 				List<Move> moves = new ArrayList<Move>();
 				for (GdlTerm sentence : lastMoves)
 				{
 					moves.add(stateMachine.getMoveFromTerm(sentence));
 				}
+				System.out.println("Gamer 3");
 
 				currentState = stateMachine.getNextState(currentState, moves);
 				getMatch().appendState(currentState.getContents());
 			}
-
-			return stateMachineSelectMove(timeout).getContents();
+			System.out.println("Gamer 4");
+			ret = stateMachineSelectMove(timeout).getContents();
 		}
 		catch (Exception e)
 		{
 		    GamerLogger.logStackTrace("GamePlayer", e);
 			throw new MoveSelectionException(e);
 		}
+
+		System.out.println("5");
+		return ret;
+
 	}
 
 	@Override

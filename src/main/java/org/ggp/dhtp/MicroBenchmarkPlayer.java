@@ -13,16 +13,18 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.propnet.SamplePropNetStateMachine;
+import org.ggp.dhtp.propnet.InternalMachineState;
+import org.ggp.dhtp.propnet.PropWyattStateMachine;
 
 public class MicroBenchmarkPlayer extends StateMachineGamer {
 
 	Player p;
-	boolean USE_PROPNET = true;
+	boolean USE_PROPNET = false;
+	boolean USE_WYATT = true;
 	boolean USE_CACHE = false;
 
 	@Override
-	public SamplePropNetStateMachine getInitialStateMachine() {
+	public PropWyattStateMachine getInitialStateMachine() {
 		// TODO Auto-generated method stub
 		/*
 		StateMachine rawMachine;
@@ -38,7 +40,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 			return rawMachine;
 		}
 		*/
-		return new SamplePropNetStateMachine();
+		return new PropWyattStateMachine();
 	}
 
 	@Override
@@ -55,11 +57,13 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 		long limit = (long)(turnTime*0.75) + System.currentTimeMillis();
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
-		if(machine instanceof SamplePropNetStateMachine){
-			state = ((SamplePropNetStateMachine)machine).convertToInternal(state);
+		if(machine instanceof PropWyattStateMachine){
+			state = ((PropWyattStateMachine)machine).convertToInternal(state);
 		}
 		Role role = getRole();
+		System.out.println("Getting legal moves with state " + ((InternalMachineState)state).getBitSet());
 		List<Move> moves = machine.getLegalMoves(state,role);
+		System.out.println("Got legal moves " + moves);
 		int randomIndex = new Random().nextInt(moves.size());
 		long mctsStart = System.currentTimeMillis();
 		int numDepthCharges=0;

@@ -137,6 +137,7 @@ public class PropWyatt {
 	}
 
 	public BitSet getComponentInputs(int i) {
+		System.out.println("This input array size: " + this.inputArray.length);
 		return this.inputArray[i];
 	}
 
@@ -169,12 +170,18 @@ public class PropWyatt {
 	}
 
 	public PropWyatt(List<Role> roles, ArrayList<Component> components) {
-		this.components = new ArrayList<Component>(components);
+		System.out.println("Prop Wyatt creating!");
+		this.components = new ArrayList<Component>();
+		for (Component c: components) {
+			this.components.add(c);
+		}
 		this.roleList = roles;
 		this.toProcess = new BitSet(this.components.size());
 		this.propositionIndex = new HashMap<GdlSentence, Integer>();
+		this.indexProposition = new HashMap<Integer, GdlSentence>();
 		this.componentIndex = new HashMap<Component, Integer>();
 		this.roleGoalMap = new HashMap<Role, BitSet>();
+		this.roleLegalMap = new HashMap<Role, BitSet>();
 		for (Role r : roles) {
 			this.roleGoalMap.put(r, new BitSet(this.components.size()));
 			this.roleLegalMap.put(r, new BitSet(this.components.size()));
@@ -186,6 +193,7 @@ public class PropWyatt {
 
 	/* Sets propnet internals to array representation for lifetime of datastructure */
 	public void freezeProp() {
+		System.out.println("Prop Wyatt Freezing!");
 		/* Map all proposition names to indexes in the component vector */
 		int i = 0;
 		Proposition p;
@@ -207,15 +215,18 @@ public class PropWyatt {
 		this.andVector = new BitSet(this.components.size());
 		this.orVector = new BitSet(this.components.size());
 		this.andCounters = new int[this.components.size()];
+		this.notVector = new BitSet(this.components.size());
 		this.orCounters = new int[this.components.size()];
 		this.numberInputs = new int[this.components.size()];
 		this.inputArray = new BitSet[this.components.size()];
 		this.outputArray = new BitSet[this.components.size()];
 		this.initializedVector = new BitSet(this.components.size());
+		this.propVector = new BitSet(this.components.size());
 		/* Initialize all internal structures based on component*/
 		i = 0;
 		for (Component c: this.components) {
 			/* General Component Initializations */
+			System.out.println("Component " + i + "= " + c);
 			this.componentIndex.put(c, i);
 			this.inputArray[i] = new BitSet(this.components.size());
 			this.outputArray[i] = new BitSet(this.components.size());
@@ -266,15 +277,21 @@ public class PropWyatt {
 			for (Component outputC: c.getOutputArray()) {
 				this.outputArray[i].set(this.componentIndex.get(outputC));
 			}
+			i++;
 		}
-		i++;
 	}
 
 	private void initPropFreeze(Proposition p, int i) {
-		/* Base initializations */
-		Component singleIn = p.getSingleInput();
-		if (singleIn instanceof Transition) {
-			this.baseVector.set(i);
+		/* Init and terminal initializations */
+		if (p.getName() instanceof GdlProposition) {
+			GdlConstant constant = ((GdlProposition) p.getName()).getName();
+			if (constant.getValue().toUpperCase().equals("INIT")) {
+				this.initIndex = i;
+				return; // Return early so that init does not crash
+			}
+			if (constant.getValue().equals("terminal")) {
+				this.terminalIndex = i;
+			}
 		}
 
 		/* Input Initializations */
@@ -282,6 +299,7 @@ public class PropWyatt {
 			GdlRelation relation = (GdlRelation) p.getName();
 			if (relation.getName().getValue().equals("does")) {
 				inputVector.set(i);
+				return;
 			}
 
 			/* Legal Initializations */
@@ -290,6 +308,7 @@ public class PropWyatt {
 				Role r = new Role(name);
 				if (!roleLegalMap.containsKey(r)) {
 					roleLegalMap.put(r, new BitSet(this.components.size()));
+					return;
 				}
 				roleLegalMap.get(r).set(i);
 			}
@@ -301,16 +320,14 @@ public class PropWyatt {
 					roleGoalMap.put(theRole, new BitSet(this.components.size()));
 				}
 				roleGoalMap.get(theRole).set(i);
+				return;
 			}
+		}
 
-			/* Init and terminal initializations */
-			GdlConstant constant = ((GdlProposition) p.getName()).getName();
-			if (constant.getValue().toUpperCase().equals("INIT")) {
-				this.initIndex = i;
-			}
-			if (constant.getValue().equals("terminal")) {
-				this.terminalIndex = i;
-			}
+		/* Base initializations */
+		Component singleIn = p.getSingleInput();
+		if (singleIn instanceof Transition) {
+			this.baseVector.set(i);
 		}
 	}
 

@@ -12,10 +12,15 @@ public class PropWyattForwardUtils {
 
 
 	public static void forwardProp(PropWyatt propNet) {
+		System.out.println("Starting forward prop");
+		System.out.println("To Process:" + propNet.getToProcess());
 		BitSet toProcess = propNet.getToProcess();
 		BitSet components = propNet.getComponents();
 		BitSet initialized = propNet.getInitializedVector();
+		System.out.println("To process size: " + toProcess.size());
+		System.out.println("Components size: " + components.size());
 		while (!toProcess.isEmpty()) {
+			System.out.println("The high components: " + components);
 			int i = toProcess.nextSetBit(0);
 			toProcess.clear(i);
 			/* Check if the value has been updated */
@@ -52,8 +57,9 @@ public class PropWyattForwardUtils {
 					/* Get the next output index avoiding exceptions */
 					if (outputIdx == outputComponents.size() - 1) {
 						outputIdx = -1;
+					} else {
+						outputIdx = outputComponents.nextSetBit(outputIdx + 1);
 					}
-					outputIdx = outputComponents.nextSetBit(outputIdx + 1);
 				}
 				initialized.set(i);
 			}
@@ -146,8 +152,9 @@ public class PropWyattForwardUtils {
 			/* Get the next output index avoiding exceptions */
 			if (inputIndex == inputMask.size() - 1) {
 				inputIndex = -1;
+			} else {
+				inputIndex = inputMask.nextSetBit(inputIndex + 1);
 			}
-			inputIndex = inputMask.nextSetBit(inputIndex + 1);
 
 		}
 		return modified;
@@ -183,8 +190,9 @@ public class PropWyattForwardUtils {
 			/* Get the next output index avoiding exceptions */
 			if (i == changedComponents.size() - 1) {
 				i = -1;
+			} else {
+				i = changedComponents.nextSetBit(i + 1);
 			}
-			i = changedComponents.nextSetBit(i + 1);
 		}
 		return modified;
 	}
@@ -222,8 +230,9 @@ public class PropWyattForwardUtils {
 			/* Get the next output index avoiding exceptions */
 			if (baseIndex == baseMask.size() - 1) {
 				baseIndex = -1;
+			} else {
+				baseIndex = baseMask.nextSetBit(baseIndex + 1);
 			}
-			baseIndex = baseMask.nextSetBit(baseIndex + 1);
 
 		}
 
@@ -256,8 +265,9 @@ public class PropWyattForwardUtils {
 			/* Get the next output index avoiding exceptions */
 			if (i == changedComponents.size() - 1) {
 				i = -1;
+			} else {
+				i = changedComponents.nextSetBit(i + 1);
 			}
-			i = changedComponents.nextSetBit(i + 1);
 		}
 		return modified;
 	}
