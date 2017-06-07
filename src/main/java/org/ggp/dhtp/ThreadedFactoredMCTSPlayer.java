@@ -32,13 +32,11 @@ import org.ggp.dhtp.util.DebugLog;
 import org.ggp.dhtp.util.FixedBounder;
 import org.ggp.dhtp.util.GoalProximityHeuristic;
 import org.ggp.dhtp.util.Heuristic;
-import org.ggp.dhtp.util.HeuristicFreedom;
-import org.ggp.dhtp.util.HeuristicOpponentFreedom;
 import org.ggp.dhtp.util.HeuristicWeighted;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
-	private static final int THREAD_COUNT = 6;
+	private static final int THREAD_COUNT = 2;
 	private static final double TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double METAGAME_TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double FACTOR_SAFETY_MARGIN = 0.25;
@@ -110,17 +108,17 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 		GoalProximityHeuristic gph = new GoalProximityHeuristic(getStateMachine());
 		gph.setPropNet(this.propNetMachine.getPropNet());
 		hl.add(gph);
-		hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
+		//hl.add(new HeuristicFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
 		// hl.add(new HeuristicFreedom(getStateMachine(),
 		// HeuristicFreedom.Type.FOCUS));
-		hl.add(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
+		//hl.add(new HeuristicOpponentFreedom(getStateMachine(), HeuristicFreedom.Type.MOBILITY));
 		// hl.add(new HeuristicOpponentFreedom(getStateMachine(),
 		// HeuristicFreedom.Type.FOCUS));
 
-		weights.add(0.80);
-		weights.add(0.10);
+		weights.add(1.0);
+		//weights.add(0.10);
 		// weights.add(0.10);
-		weights.add(0.10);
+		//weights.add(0.10);
 		// weights.add(0.10);
 
 		for (int i = 0; i < weights.size(); i++) {
@@ -595,7 +593,7 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 					allFullyExplored = true;
 					for (int nodeIndex = 0; nodeIndex < currNodes.size(); nodeIndex++) {
 						MCTSNode currNode = currNodes.get(nodeIndex);
-						double bpr = currNode.performIteration(this.timeout, false, tFactoredMachines.get(this.machine).get(nodeIndex));
+						double bpr = currNode.performIteration(this.timeout, false, tFactoredMachines.get(this.machine).get(nodeIndex), Math.random() < 0.20);
 						if (bpr < 0) {
 							throw new PhaseTimeoutException();
 						}

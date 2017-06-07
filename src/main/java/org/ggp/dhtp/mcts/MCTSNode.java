@@ -153,23 +153,39 @@ public class MCTSNode {
 		}
 		Move bestMove = null;
 		double bestUtility = 0.0;
+		double bestHeur = 0.0;
 		int numSame = 0;
 		for (int i = 0; i < numPlayerMoves; i++) {
 			PhaseTimeoutException.checkTimeout(turnTimeout);
 			double averageUtility = playerVisits.get(i) == 0 ? 0 : playerUtil.get(i) / playerVisits.get(i);
+			double averageHeur = playerHeur.get(i)/playerVisits.get(i);
 			DebugLog.output("Average utility of " + playerMoves.get(i) + " is " + averageUtility);
+			DebugLog.output("Heur of " + playerMoves.get(i) + " is " + averageHeur);
 			DebugLog.output("Visits of " + playerMoves.get(i) + " is " + playerVisits.get(i));
 			if (bestMove == null || bestUtility < averageUtility) {
 				bestMove = playerMoves.get(i);
 				bestUtility = averageUtility;
+				bestHeur = averageHeur;
 				numSame = 0;
 			} else if (bestUtility == averageUtility){
+				if(averageHeur < bestHeur && Math.random() < 0.25){
+					bestMove = playerMoves.get(i);
+					bestUtility = averageUtility;
+					bestHeur = averageHeur;
+					numSame = 0;
+				} else if(averageHeur > bestHeur && Math.random() < 0.90){
+					bestMove = playerMoves.get(i);
+					bestUtility = averageUtility;
+					bestHeur = averageHeur;
+					numSame = 0;
+				} else if (averageHeur == bestHeur) {
 				numSame ++;
 				double cutoff = ((double)numSame)/(numSame+1.0);
 				float randomVal = new Random().nextFloat();
 				if(randomVal > cutoff){
 					DebugLog.output("Found multiple best utility");;
 					bestMove = playerMoves.get(i);
+				}
 				}
 			}
 
@@ -285,10 +301,14 @@ public class MCTSNode {
 	}
 
 	public double performIteration(long turnTimeout, boolean first) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException {
-		return performIteration(turnTimeout, first, null);
+		return performIteration(turnTimeout, first, null, false);
 	}
 
-	public double performIteration(long turnTimeout, boolean first, StateMachine machine) throws TransitionDefinitionException,
+	public double performIteration(long turnTimeout, boolean first, boolean probe) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException {
+		return performIteration(turnTimeout, first, null, probe);
+	}
+
+	public double performIteration(long turnTimeout, boolean first, StateMachine machine, boolean probe) throws TransitionDefinitionException,
 			MoveDefinitionException, GoalDefinitionException, PhaseTimeoutException {
 		PhaseTimeoutException.checkTimeout(turnTimeout);
 
@@ -322,19 +342,22 @@ public class MCTSNode {
 				double bestPlayerScore = 0;
 				int bestPlayerIdx = 0;
 				for (int i = 0; i < numPlayerMoves; i++) {
-					if (System.currentTimeMillis() > turnTimeout)
-						throw new PhaseTimeoutException();
-					boolean allChildrenFullyExploredForPlayerMove = true;
-					for (int j = 0; j < numOpponentMoves; j++) {
+					if (probe) {
 						if (System.currentTimeMillis() > turnTimeout)
 							throw new PhaseTimeoutException();
-						if (!children.get(numOpponentMoves * i + j).isFullyExplored) {
-							allChildrenFullyExploredForPlayerMove = false;
-							break;
+						boolean allChildrenFullyExploredForPlayerMove = true;
+						for (int j = 0; j < numOpponentMoves; j++) {
+							if (System.currentTimeMillis() > turnTimeout)
+								throw new PhaseTimeoutException();
+							if (!children.get(numOpponentMoves * i + j).isFullyExplored) {
+								allChildrenFullyExploredForPlayerMove = false;
+								break;
+							}
 						}
-					}
-					if (allChildrenFullyExploredForPlayerMove) {
-						continue;
+
+						if (allChildrenFullyExploredForPlayerMove) {
+							continue;
+						}
 					}
 					if (first) {
 						DebugLog.output("Calculating selection score for child " + playerMoves.get(i).toString());
@@ -355,6 +378,13 @@ public class MCTSNode {
 				double bestOpponentScore = Integer.MIN_VALUE;
 				int bestOpponentIdx = 0;
 				for (int i = 0; i < numOpponentMoves; i++) {
+
+					if(probe){
+						if(children.get(numOpponentMoves * bestPlayerIdx + i).isFullyExplored){
+							continue;
+						}
+					}
+
 					if (System.currentTimeMillis() > turnTimeout)
 						throw new PhaseTimeoutException();
 
@@ -391,7 +421,7 @@ public class MCTSNode {
 		// This is outside of the lock
 		if (newState == null) { // Select
 			heur = selectedChild.heurVal;
-			bpr = selectedChild.performIteration(turnTimeout, false, machine);
+			bpr = selectedChild.performIteration(turnTimeout, false, machine, probe);
 			if (bpr == -1)
 				throw new PhaseTimeoutException();
 			selectedIdx = bestIdx;
