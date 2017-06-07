@@ -448,7 +448,7 @@ public abstract class StateMachine
      * @param theDepth an integer array, the 0th element of which will be set to
      * the number of state changes that were made to reach a terminal state.
      */
-    public MachineState performDepthCharge(MachineState state, final int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
+    public MachineState performDepthCharge(MachineState state, final int[] theDepth, StateMachine cmp, MachineState oldState) throws TransitionDefinitionException, MoveDefinitionException {
         int nDepth = 0;
         while(!isTerminal(state)) {
             nDepth++;
@@ -467,7 +467,7 @@ public abstract class StateMachine
         final int[] depth = new int[1];
         for (int i = 0; i < repetitions; i++) {
             MachineState stateForCharge = state.clone();
-            stateForCharge = performDepthCharge(stateForCharge, depth);
+            stateForCharge = performDepthCharge(stateForCharge, depth, null, null);
             avgDepth[0] += depth[0];
             final double accumulatedDiscountFactor = Math.pow(discountFactor, depth[0]);
             for (int j = 0; j < avgScores.length; j++) {
@@ -479,4 +479,6 @@ public abstract class StateMachine
             avgScores[j] /= repetitions;
         }
     }
+
+
 }

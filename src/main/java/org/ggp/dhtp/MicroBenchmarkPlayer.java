@@ -1,4 +1,6 @@
 package org.ggp.dhtp;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -6,6 +8,7 @@ import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
+import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -13,7 +16,6 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.propnet.SamplePropNetStateMachine;
 import org.ggp.dhtp.propnet.PropWyattStateMachine;
 
 public class MicroBenchmarkPlayer extends StateMachineGamer {
@@ -24,7 +26,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 	boolean USE_CACHE = false;
 
 	@Override
-	public SamplePropNetStateMachine getInitialStateMachine() {
+	public PropWyattStateMachine getInitialStateMachine() {
 		// TODO Auto-generated method stub
 		/*
 		StateMachine rawMachine;
@@ -40,7 +42,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 			return rawMachine;
 		}
 		*/
-		return new SamplePropNetStateMachine();
+		return new PropWyattStateMachine();
 	}
 
 	@Override
@@ -57,6 +59,21 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 		long limit = (long)(turnTime*0.75) + System.currentTimeMillis();
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
+		MachineState oldState = getCurrentOldState();
+		 /* Compare the two states */
+        ArrayList<String> sentences = new ArrayList<String>();
+        for (GdlSentence sentence : state.getContents()) {
+        	sentences.add(sentence.toString());
+        }
+        ArrayList<String> oldSentences = new ArrayList<String>();
+        for (GdlSentence sentence : oldState.getContents()) {
+        	oldSentences.add(sentence.toString());
+        }
+        Collections.sort(sentences);
+        Collections.sort(oldSentences);
+        System.out.println(sentences);
+        System.out.println(oldSentences);
+
 		if(machine instanceof PropWyattStateMachine){
 			state = ((PropWyattStateMachine)machine).convertToInternal(state);
 		}
@@ -66,7 +83,7 @@ public class MicroBenchmarkPlayer extends StateMachineGamer {
 		long mctsStart = System.currentTimeMillis();
 		int numDepthCharges=0;
 		while(System.currentTimeMillis() < limit){
-			machine.performDepthCharge(state, new int[1]);
+			machine.performDepthCharge(state, new int[1], getOldStateMachine(), getCurrentOldState());
 			numDepthCharges++;
 		}
 		long mctsMs = System.currentTimeMillis() - mctsStart;

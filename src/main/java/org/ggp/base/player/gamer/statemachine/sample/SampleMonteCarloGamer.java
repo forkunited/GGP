@@ -80,7 +80,7 @@ public final class SampleMonteCarloGamer extends SampleGamer
 	int performDepthChargeFromMove(MachineState theState, Move myMove) {
 	    StateMachine theMachine = getStateMachine();
 	    try {
-            MachineState finalState = theMachine.performDepthCharge(theMachine.getRandomNextState(theState, getRole(), myMove), depth);
+            MachineState finalState = theMachine.performDepthCharge(theMachine.getRandomNextState(theState, getRole(), myMove), depth, null, null);
             return theMachine.getGoal(finalState, getRole());
         } catch (Exception e) {
             e.printStackTrace();

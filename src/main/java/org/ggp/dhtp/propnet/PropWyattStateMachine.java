@@ -2,6 +2,7 @@ package org.ggp.dhtp.propnet;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -54,6 +55,27 @@ public class PropWyattStateMachine extends StateMachine {
         }
     }
 
+    /* Return the Gdl sentences that go along with this state (high baseProps) */
+    public Set<GdlSentence> getContents(InternalMachineState state) {
+    	BitSet stateBits = (BitSet)state.getBitSet().clone();
+    	stateBits.and(propNet.getBaseVector());
+    	Map<Integer, GdlSentence> indexPropMap = propNet.getIndexPropMap();
+    	Set<GdlSentence> contents = new HashSet<GdlSentence>();
+    	int i = stateBits.nextSetBit(0);
+    	while (i>= 0) {
+    		contents.add(indexPropMap.get(i));
+    		/* Get the next output index avoiding exceptions */
+			if (i == stateBits.size() - 1) {
+				i = -1;
+			} else {
+				i = stateBits.nextSetBit(i + 1);
+			}
+    	}
+    	System.out.println("The contents: " + contents);
+    	System.out.println("Bitset: " + propNet.getComponents());
+    	return contents;
+    }
+
     public void initialize(PropNet propNet) {
     	//propNet.renderToFile("/Users/ZenGround0/1.dot");
         this.propNet = new PropWyatt(propNet.getRoles(), propNet.getComponentList());
@@ -99,20 +121,50 @@ public class PropWyattStateMachine extends StateMachine {
     }
 
     @Override
-	public MachineState performDepthCharge(MachineState state, final int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
+	public MachineState performDepthCharge(MachineState state, final int[] theDepth, StateMachine cmp, MachineState oldState) throws TransitionDefinitionException, MoveDefinitionException {
     	if(state instanceof InternalMachineState){
-    		return performDepthChargeInternal((InternalMachineState)state, theDepth);
+    		System.out.println("Perform depth charge");
+    		return performDepthChargeInternal((InternalMachineState)state, theDepth, cmp, oldState);
     	} else {
-    		return super.performDepthCharge(state, theDepth);
+    		return super.performDepthCharge(state, theDepth, null, null);
     	}
     }
 
-    private InternalMachineState performDepthChargeInternal(InternalMachineState state, final int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
+    private InternalMachineState performDepthChargeInternal(InternalMachineState state, final int[] theDepth, StateMachine cmp, MachineState oldState) throws TransitionDefinitionException, MoveDefinitionException {
         int nDepth = 0;
         while(!isTerminalInternal(state)) {
+        	System.out.println("Inside while");
             nDepth++;
             List<Move> m = getRandomJointMoveInternal(state);
+            System.out.println("Moves: " + m);
             state = getNextStateInternal(state, m);
+            oldState = cmp.getNextState(oldState, m);
+            /* Compare the two states */
+            ArrayList<String> sentences = new ArrayList<String>();
+
+            for (GdlSentence sentence : this.getContents(state)) {
+            	sentences.add(sentence.toString());
+            }
+            ArrayList<String> oldSentences = new ArrayList<String>();
+            for (GdlSentence sentence : oldState.getContents()) {
+            	oldSentences.add(sentence.toString());
+            }
+            Collections.sort(sentences);
+            Collections.sort(oldSentences);
+            System.out.println(sentences);
+            System.out.println(oldSentences);
+            if (!sentences.toString().equals(oldSentences.toString())) {
+            	System.out.println("Error states are different between machines");
+            	System.out.println("Propnet state: ");
+            	System.out.println(sentences.toString());
+            	System.out.println("Correct state: ");
+            	System.out.println(oldSentences.toString());
+            	throw new MoveDefinitionException(oldState, roles.get(0));
+            }
+
+            /* Compare the legal moves of role 0 */
+
+            /* Compare the goal of role 0 */
         }
         if(theDepth != null)
             theDepth[0] = nDepth;
@@ -253,10 +305,12 @@ public class PropWyattStateMachine extends StateMachine {
     	BitSet components = propNet.getComponents();
         components.set(initIndex);
         propNet.getToProcess().set(0, propNet.getRawComponents().size(), true);
+        propNet.getInitializedVector().or(propNet.getTransitionVector());
         PropWyattForwardUtils.forwardProp(propNet);
         /* Propagate to all base propositions */
         BitSet transitionMask = propNet.getTransitionVector();
         int i = transitionMask.nextSetBit(0);
+        System.out.println("Before propagating through: " + components);
         while (i >= 0) {
         	ArrayList<Integer> inputs = propNet.getComponentInputs(i);
 			int inputIdx = inputs.get(0);
@@ -264,7 +318,10 @@ public class PropWyattStateMachine extends StateMachine {
         	int outputIdx = outputs.get(0);
         	/* Set output value to input */
         	components.set(outputIdx, components.get(inputIdx));
-
+//        	System.out.println("Base prop being set from transition: " + propNet.getIndexPropMap().get(outputIdx));
+//        	System.out.println("Incident name through transition: " + propNet.getIndexPropMap().get(inputIdx));
+//        	System.out.println("Incident index: " + inputIdx);
+//        	System.out.println("Incident truth value: " + components.get(inputIdx));
         	/* Get the next output index avoiding exceptions */
 			if (i == transitionMask.size() - 1) {
 				i = -1;
@@ -272,6 +329,7 @@ public class PropWyattStateMachine extends StateMachine {
 				i = transitionMask.nextSetBit(i + 1);
 			}
         }
+        System.out.println("After propagating through: " + components);
 
 
         components.set(initIndex, false);

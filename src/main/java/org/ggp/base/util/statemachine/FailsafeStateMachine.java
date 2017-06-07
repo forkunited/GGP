@@ -354,12 +354,12 @@ public class FailsafeStateMachine extends StateMachine
     }
 
     @Override
-    public MachineState performDepthCharge(MachineState state, int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
+    public MachineState performDepthCharge(MachineState state, int[] theDepth, StateMachine cmp, MachineState oldState) throws TransitionDefinitionException, MoveDefinitionException {
         if(theBackingMachine == null)
             return null;
 
         try {
-            return theBackingMachine.performDepthCharge(state, theDepth);
+            return theBackingMachine.performDepthCharge(state, theDepth, cmp, oldState);
         } catch (TransitionDefinitionException te) {
             throw te;
         } catch (MoveDefinitionException me) {
@@ -374,7 +374,7 @@ public class FailsafeStateMachine extends StateMachine
             failGracefully(null, e);
         }
 
-        return performDepthCharge(state, theDepth);
+        return performDepthCharge(state, theDepth, cmp, oldState);
     }
 
     @Override

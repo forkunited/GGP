@@ -16,14 +16,17 @@ public class PropWyattForwardUtils {
 		BitSet toProcess = propNet.getToProcess();
 		BitSet components = propNet.getComponents();
 		BitSet initialized = propNet.getInitializedVector();
+		Map<Integer, GdlSentence> debugMap = propNet.getIndexPropMap();
 		while (!toProcess.isEmpty()) {
 			int i = toProcess.nextSetBit(0);
+			//System.out.println("Processing component: " + debugMap.get(i) + " with index : " + i);
 			toProcess.clear(i);
 			/* Check if the value has been updated */
 			boolean oldVal = components.get(i);
 			boolean newVal = getNewValue(propNet, i);
+			//System.out.println("Old Value: " + oldVal + " New Value: " + newVal + " Init: " + initialized.get(i));
 			if (oldVal != newVal || !initialized.get(i)) { /* Differential propagation */
-				components.flip(i); // update components vector to reflect new value
+				components.set(i, newVal); // update components vector to reflect new value
 				int delta = newVal == true ? 1 : -1;
 				ArrayList<Integer> outputComponents = propNet.getComponentOutputs(i);
 
@@ -33,28 +36,38 @@ public class PropWyattForwardUtils {
 
 				for (int outputIdx : outputComponents) {
 					if (andVector.get(outputIdx)) {
+						//System.out.println("    Propagating to and at index " + outputIdx);
 						if (!initialized.get(i)) {
+							int actualNumTrue = 0;
 							for (int incidentIdx: propNet.getComponentInputs(outputIdx)) {
 								if (components.get(incidentIdx)) {
-									propNet.incrAndCounter(outputIdx, 1);
+									actualNumTrue++;
 								}
 							}
+							propNet.setAndCounter(outputIdx, actualNumTrue);
 						} else {
 							propNet.incrAndCounter(outputIdx, delta);
 						}
 					} else if (orVector.get(outputIdx)) {
+						//System.out.println("    Propagating to or at index " + outputIdx);
 						if (!initialized.get(i)) {
+							int actualNumTrue = 0;
+
 							for (int incidentIdx: propNet.getComponentInputs(outputIdx)) {
 								if (components.get(incidentIdx)) {
-									propNet.incrOrCounter(outputIdx, 1);
+									actualNumTrue++;
 								}
 							}
+							propNet.setOrCounter(outputIdx, actualNumTrue);
+
 						} else {
 							propNet.incrOrCounter(outputIdx, delta);
 						}
-					} // TODO Add the optimization used in the other forward prop here
+					} else{
+						//System.out.println("    Propagating to component at index " + outputIdx + " [" + debugMap.get(outputIdx)+ "]");
+					}
+					// TODO Add the optimization used in the other forward prop here
 					toProcess.set(outputIdx);
-
 				}
 				initialized.set(i);
 			}

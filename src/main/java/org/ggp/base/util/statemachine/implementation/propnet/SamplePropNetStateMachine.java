@@ -100,11 +100,11 @@ public class SamplePropNetStateMachine extends StateMachine {
     }
 
     @Override
-	public MachineState performDepthCharge(MachineState state, final int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
+	public MachineState performDepthCharge(MachineState state, final int[] theDepth, StateMachine cmp, MachineState oldState) throws TransitionDefinitionException, MoveDefinitionException {
     	if(state instanceof InternalMachineState){
     		return performDepthChargeInternal((InternalMachineState)state, theDepth);
     	} else {
-    		return super.performDepthCharge(state, theDepth);
+    		return super.performDepthCharge(state, theDepth, cmp, oldState);
     	}
     }
 

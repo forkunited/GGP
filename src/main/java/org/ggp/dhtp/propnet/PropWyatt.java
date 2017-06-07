@@ -156,8 +156,15 @@ public class PropWyatt {
 		this.andCounters[i] += delta;
 	}
 
+	public void setAndCounter(int i, int val) {
+		this.andCounters[i] = val;
+	}
+
 	public void incrOrCounter(int i, int delta) {
 		this.orCounters[i] += delta;
+	}
+	public void setOrCounter(int i, int val) {
+		this.orCounters[i] = val;
 	}
 
 	public int getTotalInputs(int i) {
@@ -255,6 +262,9 @@ public class PropWyatt {
 
 			/* Constant Initializations */
 			if (c instanceof Constant) {
+				if (c.getValue()) {
+					this.componentVector.set(i);
+				}
 				this.constantVector.set(i);
 			}
 
@@ -275,6 +285,9 @@ public class PropWyatt {
 			for (Component outputC: c.getOutputArray()) {
 				this.outputArray[i].add(this.componentIndex.get(outputC));
 			}
+			System.out.println("Index= " +i + " Component: " +c + " Outputs: " + this.outputArray[i] + " Inputs: " + this.inputArray[i]);
+
+
 			i++;
 		}
 	}
