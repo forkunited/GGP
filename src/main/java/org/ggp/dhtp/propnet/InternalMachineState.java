@@ -17,7 +17,8 @@ public class InternalMachineState extends MachineState {
 
 	@Override
 	public java.util.Set<org.ggp.base.util.gdl.grammar.GdlSentence> getContents() {
-		throw new UnsupportedOperationException();
+		//throw new UnsupportedOperationException();
+		return new java.util.HashSet<org.ggp.base.util.gdl.grammar.GdlSentence>();
 	};
 
 	@Override

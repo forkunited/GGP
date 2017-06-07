@@ -1,6 +1,7 @@
 package org.ggp.dhtp.propnet;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
@@ -13,18 +14,26 @@ public class PropWyattForwardUtils {
 
 
 	public static void forwardProp(PropWyatt propNet) {
+		System.out.println(Arrays.toString(Thread.currentThread().getStackTrace()));
 		BitSet toProcess = propNet.getToProcess();
 		BitSet components = propNet.getComponents();
+		System.out.println("Forward Prop starting state: " + components);
 		BitSet initialized = propNet.getInitializedVector();
 		Map<Integer, GdlSentence> debugMap = propNet.getIndexPropMap();
+
 		while (!toProcess.isEmpty()) {
 			int i = toProcess.nextSetBit(0);
-			//System.out.println("Processing component: " + debugMap.get(i) + " with index : " + i);
+			System.out.println("Processing component: " + debugMap.get(i) + " with index : " + i);
 			toProcess.clear(i);
 			/* Check if the value has been updated */
 			boolean oldVal = components.get(i);
 			boolean newVal = getNewValue(propNet, i);
-			//System.out.println("Old Value: " + oldVal + " New Value: " + newVal + " Init: " + initialized.get(i));
+			BitSet baseVector = propNet.getBaseVector();
+			BitSet inputVector = propNet.getInputVector();
+			if (baseVector.get(i) || inputVector.get(i) ) {
+				oldVal = !oldVal;
+			}
+			System.out.println("Old Value: " + oldVal + " New Value: " + newVal + " Init: " + initialized.get(i));
 			if (oldVal != newVal || !initialized.get(i)) { /* Differential propagation */
 				components.set(i, newVal); // update components vector to reflect new value
 				int delta = newVal == true ? 1 : -1;
@@ -72,6 +81,8 @@ public class PropWyattForwardUtils {
 				initialized.set(i);
 			}
 		}
+		System.out.println("Forward Prop ending state: " + components);
+
 	}
 
 	private static boolean getNewValue(PropWyatt propNet, int i) {
@@ -211,6 +222,7 @@ public class PropWyattForwardUtils {
 		/* Remove sentences to only include base */
 		Set<GdlSentence> baseSentences = state.getContents(); /* Can probably optimize this clone */
 
+		System.out.println("markbases toprocess:" + propNet.getToProcess());
 		/* Set propnet base values to match state */
 		boolean modified = false;
 		Map<Integer, GdlSentence> propToIndex = propNet.getIndexPropMap();
@@ -244,6 +256,8 @@ public class PropWyattForwardUtils {
 
 		}
 
+		System.out.println("markbases toprocess end:" + propNet.getToProcess());
+
 		return modified;
 	}
 
@@ -256,6 +270,8 @@ public class PropWyattForwardUtils {
 		BitSet changedComponents = new BitSet(newState.size());
 		oldBases.and(baseMask);
 		newState.and(baseMask);
+		System.out.println("markbases internal toprocess start:" + propNet.getToProcess());
+
 
 		/* Get changed bits by setting to high any bases that differ in old and new */
 		changedComponents.or(oldBases);
@@ -266,6 +282,7 @@ public class PropWyattForwardUtils {
 		int i = changedComponents.nextSetBit(0);
 		BitSet toProcess = propNet.getToProcess();
 		while (i >= 0) {
+			System.out.println(i + " was modified");
 			modified = true;
 			toProcess.set(i);
 			propNet.getComponents().set(i, newState.get(i)); // Set base in state
@@ -277,6 +294,9 @@ public class PropWyattForwardUtils {
 				i = changedComponents.nextSetBit(i + 1);
 			}
 		}
+
+		System.out.println("markbases internal toprocess end:" + propNet.getToProcess());
+
 		return modified;
 	}
 
