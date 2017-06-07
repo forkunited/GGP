@@ -36,7 +36,7 @@ import org.ggp.dhtp.util.HeuristicWeighted;
 import org.ggp.dhtp.util.PhaseTimeoutException;
 
 public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
-	private static final int THREAD_COUNT = 2;
+	private static final int THREAD_COUNT = 16;
 	private static final double TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double METAGAME_TIMEOUT_SAFETY_MARGIN = 0.75;
 	private static final double FACTOR_SAFETY_MARGIN = 0.25;
@@ -218,19 +218,22 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 		// Clone all the factored machines for each thread
 		this.tFactoredMachines = Collections.synchronizedList(new ArrayList<List<StateMachine>>());
 		this.tFactoredMachines.add(factoredMachines);
-		for (int i = 1; i < THREAD_COUNT; i++) {
-			List<StateMachine> tMachines = Collections.synchronizedList(new ArrayList<StateMachine>());
-			for (StateMachine machine : factoredMachines) {
-				// FIXME Swap SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
-				//cloneMachine.initialize(((SamplePropNetStateMachine)machine).getPropNet().clone());
-				//tMachines.add(cloneMachine);
 
-				SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
-				cloneMachine.initialize(singleMachine.getDescription(), false);//((SamplePropNetStateMachine)machine).getDescription());
-				tMachines.add(cloneMachine);
+		ExecutorService exec = Executors.newFixedThreadPool(THREAD_COUNT);
+		try {
+
+			for (int i = 1; i < THREAD_COUNT; i++) {
+				exec.submit(new ThreadSpawner(tFactoredMachines, factoredMachines, singleMachine));
 			}
-			this.tFactoredMachines.add(tMachines);
+
+		} finally {
+		    exec.shutdown();
 		}
+
+		while(!exec.isTerminated()){
+
+		}
+
 
 		int numDepthCharges = 0;
 		long depthChargeStart = System.currentTimeMillis();
@@ -245,6 +248,34 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 			runHeur =  dcps < DEPTH_CHARGE_PER_SECOND_HEUR_CUTOFF;
 		}
 	}
+
+
+	class ThreadSpawner implements Runnable {
+		private List<List<StateMachine>> tFactoredMachines;
+		private List<StateMachine> factoredMachines;
+		private SamplePropNetStateMachine singleMachine;
+		public ThreadSpawner(List<List<StateMachine>> tFactoredMachines, List<StateMachine> factoredMachines, SamplePropNetStateMachine singleMachine){
+			this.tFactoredMachines = tFactoredMachines;
+			this.factoredMachines = factoredMachines;
+			this.singleMachine = singleMachine;
+		}
+
+        @Override
+        public void run() {
+            // do stuff with o.
+        	List<StateMachine> tMachines = Collections.synchronizedList(new ArrayList<StateMachine>());
+			for (StateMachine machine : factoredMachines) {
+				// FIXME Swap SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
+				//cloneMachine.initialize(((SamplePropNetStateMachine)machine).getPropNet().clone());
+				//tMachines.add(cloneMachine);
+
+				SamplePropNetStateMachine cloneMachine = new SamplePropNetStateMachine();
+				cloneMachine.initialize(singleMachine.getDescription(), false);//((SamplePropNetStateMachine)machine).getDescription());
+				tMachines.add(cloneMachine);
+			}
+			this.tFactoredMachines.add(tMachines);
+        }
+    }
 
 	private Move getIterDeepeningMove(long timeout) throws MoveDefinitionException {
 		StateMachine machine = getStateMachine();
@@ -478,6 +509,7 @@ public class ThreadedFactoredMCTSPlayer extends StateMachineGamer {
 							bestMoveAndUtility = curMoveAndUtility;
 					}
 					bestMove = bestMoveAndUtility.left;
+					DebugLog.output("Best move score:"+bestMoveAndUtility.right);
 				}
 			}
 		} catch (Exception e) {

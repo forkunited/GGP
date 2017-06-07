@@ -159,9 +159,9 @@ public class MCTSNode {
 			PhaseTimeoutException.checkTimeout(turnTimeout);
 			double averageUtility = playerVisits.get(i) == 0 ? 0 : playerUtil.get(i) / playerVisits.get(i);
 			double averageHeur = playerHeur.get(i)/playerVisits.get(i);
-			DebugLog.output("Average utility of " + playerMoves.get(i) + " is " + averageUtility);
-			DebugLog.output("Heur of " + playerMoves.get(i) + " is " + averageHeur);
-			DebugLog.output("Visits of " + playerMoves.get(i) + " is " + playerVisits.get(i));
+			//DebugLog.output("Average utility of " + playerMoves.get(i) + " is " + averageUtility);
+			//DebugLog.output("Heur of " + playerMoves.get(i) + " is " + averageHeur);
+			//DebugLog.output("Visits of " + playerMoves.get(i) + " is " + playerVisits.get(i));
 			if (bestMove == null || bestUtility < averageUtility) {
 				bestMove = playerMoves.get(i);
 				bestUtility = averageUtility;
@@ -183,7 +183,7 @@ public class MCTSNode {
 				double cutoff = ((double)numSame)/(numSame+1.0);
 				float randomVal = new Random().nextFloat();
 				if(randomVal > cutoff){
-					DebugLog.output("Found multiple best utility");;
+					//DebugLog.output("Found multiple best utility");;
 					bestMove = playerMoves.get(i);
 				}
 				}
